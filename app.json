@@ -1,0 +1,34 @@
+{
+  "expo": {
+    "name": "PedeAê",
+    "slug": "pedeae-cliente",
+    "scheme": "pedeae",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "ios": { "supportsTablet": true, "bundleIdentifier": "com.pedeae.cliente" },
+    "android": { "package": "com.pedeae.cliente" },
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "name": "PedeAê — Sua feira local"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Use o Face ID para desbloquear seu acesso ao PedeAê."
+        }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Sua localização ajuda a encontrar mercados próximos. Você também pode informar sua cidade manualmente."
+        }
+      ]
+    ],
+    "experiments": { "typedRoutes": false }
+  }
+}
