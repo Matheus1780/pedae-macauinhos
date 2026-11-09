@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -16,22 +16,32 @@ import {
   AccessibilityInfo,
 } from 'react-native';
 import type { TextInputProps, StyleProp, ViewStyle } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors as c } from './theme';
+import type { Palette } from './theme';
+import { useTheme } from '../state/ThemeProvider';
 import { feedback } from './feedback';
 import { useApp } from '../state/AppProvider';
+import { productAtlases } from './productAssets';
 export type IconName = React.ComponentProps<typeof Ionicons>['name'];
-export const Icon = ({
+export function Icon({
   name,
   size = 22,
-  color = c.primary,
+  color,
 }: {
   name: IconName;
   size?: number;
   color?: string;
-}) => <Ionicons name={name} size={size} color={color} />;
+}) {
+  const { colors } = useTheme();
+  return <Ionicons name={name} size={size} color={color ?? colors.primary} />;
+}
+export function useUI() {
+  const { colors: c } = useTheme();
+  const s = useMemo(() => makeStyles(c), [c]);
+  return { c, s };
+}
 export function Button({
   label,
   onPress,
@@ -49,6 +59,7 @@ export function Button({
   icon?: IconName;
   danger?: boolean;
 }) {
+  const { c, s } = useUI();
   return (
     <Pressable
       accessibilityRole="button"
@@ -68,10 +79,10 @@ export function Button({
       ]}
     >
       {loading ? (
-        <ActivityIndicator color={secondary ? c.primary : 'white'} />
+        <ActivityIndicator color={secondary ? c.primary : c.onPrimary} />
       ) : (
         <>
-          {icon && <Icon name={icon} color={secondary ? c.primary : 'white'} />}
+          {icon && <Icon name={icon} color={secondary ? c.primary : c.onPrimary} />}
           <Text style={[s.buttonText, secondary && { color: c.primary }]}>{label}</Text>
         </>
       )}
@@ -87,6 +98,7 @@ export function IconButton({
   label: string;
   onPress: () => void;
 }) {
+  const { c, s } = useUI();
   return (
     <Pressable
       accessibilityRole="button"
@@ -109,6 +121,7 @@ export function Heading({
   action?: string;
   onAction?: () => void;
 }) {
+  const { c, s } = useUI();
   return (
     <View style={[s.row, { marginBottom: 16 }]}>
       <View style={s.flex}>
@@ -142,6 +155,7 @@ export function Screen({
   scroll?: boolean;
   fixedTop?: React.ReactNode;
 }) {
+  const { c, s } = useUI();
   const app = useApp();
   const [refreshing, setRefreshing] = useState(false);
   return (
@@ -164,7 +178,7 @@ export function Screen({
         )}
         {app.demo && (
           <View style={s.demo}>
-            <Text style={s.demoText}>DEMONSTRAÇÃO · preços e operações fictícios</Text>
+            <Text style={s.demoText}>DEMONSTRAÇÃO · compras e entregas simuladas</Text>
           </View>
         )}
         {fixedTop && (
@@ -208,6 +222,7 @@ export function Card({
   children: React.ReactNode;
   style?: StyleProp<ViewStyle>;
 }) {
+  const { c, s } = useUI();
   return <View style={[s.card, style]}>{children}</View>;
 }
 export function Field({
@@ -216,12 +231,13 @@ export function Field({
   hint,
   ...props
 }: TextInputProps & { label: string; error?: string; hint?: string }) {
+  const { c, s } = useUI();
   return (
     <View style={{ gap: 6, marginBottom: 16 }}>
       <Text style={s.label}>{label}</Text>
       <TextInput
         accessibilityLabel={label}
-        placeholderTextColor="#7F8A82"
+        placeholderTextColor={c.placeholder}
         style={[
           s.input,
           props.multiline && { height: 96, textAlignVertical: 'top' },
@@ -246,12 +262,14 @@ export function Badge({
   text: string;
   tone?: 'green' | 'orange' | 'gray';
 }) {
+  const { c, s } = useUI();
   return (
     <View
       style={[
         s.badge,
         {
-          backgroundColor: tone === 'orange' ? '#FFF2DE' : tone === 'gray' ? '#EEF0ED' : c.soft,
+          backgroundColor:
+            tone === 'orange' ? c.warningSoft : tone === 'gray' ? c.background : c.soft,
         },
       ]}
     >
@@ -280,6 +298,7 @@ export function Empty({
   onAction?: () => void;
   icon?: IconName;
 }) {
+  const { c, s } = useUI();
   return (
     <View style={s.empty}>
       <View style={s.emptyIcon}>
@@ -292,10 +311,11 @@ export function Empty({
   );
 }
 export function Banner({ text, error = false }: { text: string; error?: boolean }) {
+  const { c, s } = useUI();
   return (
     <View
       accessibilityRole={error ? 'alert' : 'text'}
-      style={[s.banner, error && { backgroundColor: '#FFF0ED' }]}
+      style={[s.banner, error && { backgroundColor: c.errorSoft }]}
     >
       <Icon
         name={error ? 'alert-circle-outline' : 'information-circle-outline'}
@@ -306,6 +326,7 @@ export function Banner({ text, error = false }: { text: string; error?: boolean 
   );
 }
 export function Skeleton() {
+  const { c, s } = useUI();
   return (
     <View
       accessibilityLabel="Carregando conteúdo"
@@ -313,12 +334,13 @@ export function Skeleton() {
       style={{ gap: 16 }}
     >
       {[0, 1, 2].map((i) => (
-        <View key={i} style={{ height: 100, borderRadius: 16, backgroundColor: '#E8EDE6' }} />
+        <View key={i} style={{ height: 100, borderRadius: 16, backgroundColor: c.line }} />
       ))}
     </View>
   );
 }
 export function LoadGate({ children }: { children: React.ReactNode }) {
+  const { c, s } = useUI();
   const a = useApp();
   if (a.loading)
     return (
@@ -349,20 +371,42 @@ export function ProductImage({
   emoji: string;
   size?: number;
 }) {
+  const { c, s } = useUI();
   const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [uri]);
+  const [, atlas, indexText] = uri.startsWith('atlas:') ? uri.split(':') : [];
+  const index = Number(indexText);
+  const source =
+    atlas && Number.isInteger(index) && index >= 0 && index < 20
+      ? productAtlases[atlas]
+      : undefined;
   return (
     <View
       style={{
         width: size,
         height: size,
         borderRadius: 16,
-        backgroundColor: '#F3F6EF',
+        backgroundColor: c.photo,
         alignItems: 'center',
         justifyContent: 'center',
         overflow: 'hidden',
       }}
     >
-      {uri && !failed ? (
+      {source && !failed ? (
+        <Image
+          source={source}
+          accessible={false}
+          resizeMode="stretch"
+          style={{
+            position: 'absolute',
+            width: size * 5,
+            height: size * 4,
+            left: -(index % 5) * size,
+            top: -Math.floor(index / 5) * size,
+          }}
+          onError={() => setFailed(true)}
+        />
+      ) : uri && !uri.startsWith('atlas:') && !failed ? (
         <Image
           source={{ uri }}
           style={{ width: '100%', height: '100%' }}
@@ -370,7 +414,7 @@ export function ProductImage({
           onError={() => setFailed(true)}
         />
       ) : (
-        <Text style={{ fontSize: size * 0.5 }}>{emoji}</Text>
+        <Icon name="image-outline" size={size * 0.35} color="#647067" />
       )}
     </View>
   );
@@ -388,6 +432,7 @@ export function Stepper({
   min?: number;
   label?: string;
 }) {
+  const { c, s } = useUI();
   return (
     <View style={s.stepper}>
       <Pressable
@@ -429,6 +474,7 @@ export function Row({
   value: string;
   strong?: boolean;
 }) {
+  const { c, s } = useUI();
   return (
     <View style={[s.row, { paddingVertical: 9 }]}>
       <Text style={[s.body, s.flex, strong && { fontWeight: '700' }]}>{label}</Text>
@@ -453,6 +499,7 @@ export function Choice({
   icon?: IconName;
   disabled?: boolean;
 }) {
+  const { c, s } = useUI();
   return (
     <Pressable
       accessibilityRole="radio"
@@ -495,6 +542,7 @@ export function Confirm({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
+  const { c, s } = useUI();
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
       <View style={s.scrim}>
@@ -519,6 +567,7 @@ export function Toggle({
   value: boolean;
   onChange: (v: boolean) => void;
 }) {
+  const { c, s } = useUI();
   return (
     <View style={[s.row, { gap: 16 }]}>
       <View style={s.flex}>
@@ -534,167 +583,168 @@ export function Toggle({
     </View>
   );
 }
-export const s = StyleSheet.create({
-  flex: { flex: 1 },
-  safe: { flex: 1, backgroundColor: c.background },
-  content: {
-    padding: 20,
-    paddingBottom: 32,
-    gap: 16,
-    width: '100%',
-    maxWidth: 900,
-    alignSelf: 'center',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    backgroundColor: 'white',
-    borderBottomWidth: 1,
-    borderBottomColor: c.line,
-  },
-  headerTitle: { fontSize: 20, fontWeight: '700', color: c.ink },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  body: { fontSize: 16, lineHeight: 24, color: c.ink },
-  small: { fontSize: 13, lineHeight: 20, color: c.muted },
-  label: { fontSize: 15, lineHeight: 22, fontWeight: '600', color: c.ink },
-  sectionTitle: {
-    fontSize: 21,
-    lineHeight: 28,
-    fontWeight: '700',
-    color: c.ink,
-  },
-  heroTitle: {
-    fontSize: 32,
-    lineHeight: 38,
-    fontWeight: '800',
-    letterSpacing: -0.7,
-    color: c.ink,
-  },
-  link: { color: c.primary, fontSize: 14, fontWeight: '700' },
-  button: {
-    minHeight: 54,
-    borderRadius: 14,
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    backgroundColor: c.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    gap: 10,
-  },
-  secondary: { backgroundColor: 'white', borderWidth: 1, borderColor: c.line },
-  buttonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '700',
-    textAlign: 'center',
-  },
-  iconButton: {
-    width: 48,
-    height: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  card: {
-    backgroundColor: 'white',
-    borderRadius: 20,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: c.line,
-    gap: 12,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: c.line,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    backgroundColor: 'white',
-    fontSize: 16,
-    color: c.ink,
-    minHeight: 52,
-  },
-  error: { fontSize: 13, color: c.error },
-  footer: {
-    padding: 16,
-    gap: 8,
-    backgroundColor: 'white',
-    borderTopWidth: 1,
-    borderTopColor: c.line,
-    width: '100%',
-    maxWidth: 900,
-    alignSelf: 'center',
-  },
-  badge: {
-    borderRadius: 7,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    alignSelf: 'flex-start',
-  },
-  empty: { paddingVertical: 48, gap: 16, alignItems: 'center' },
-  emptyIcon: {
-    width: 84,
-    height: 84,
-    borderRadius: 28,
-    backgroundColor: c.soft,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  banner: {
-    padding: 14,
-    borderRadius: 12,
-    backgroundColor: c.soft,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  stepper: {
-    borderWidth: 1,
-    borderColor: c.line,
-    borderRadius: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  stepButton: {
-    minWidth: 44,
-    minHeight: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  choice: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: c.line,
-    borderRadius: 16,
-    backgroundColor: 'white',
-    marginBottom: 10,
-  },
-  scrim: {
-    flex: 1,
-    backgroundColor: '#10211777',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  dialog: {
-    width: '100%',
-    maxWidth: 460,
-    padding: 24,
-    borderRadius: 24,
-    backgroundColor: 'white',
-    gap: 18,
-  },
-  demo: { backgroundColor: '#FFF4DE', padding: 5, alignItems: 'center' },
-  demoText: {
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 0.7,
-    color: c.warning,
-  },
-});
+const makeStyles = (c: Palette) =>
+  StyleSheet.create({
+    flex: { flex: 1 },
+    safe: { flex: 1, backgroundColor: c.background },
+    content: {
+      padding: 20,
+      paddingBottom: 32,
+      gap: 16,
+      width: '100%',
+      maxWidth: 1080,
+      alignSelf: 'center',
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      backgroundColor: c.surface,
+      borderBottomWidth: 1,
+      borderBottomColor: c.line,
+    },
+    headerTitle: { fontSize: 20, fontWeight: '700', color: c.ink },
+    row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+    body: { fontSize: 16, lineHeight: 24, color: c.ink },
+    small: { fontSize: 13, lineHeight: 20, color: c.muted },
+    label: { fontSize: 15, lineHeight: 22, fontWeight: '600', color: c.ink },
+    sectionTitle: {
+      fontSize: 21,
+      lineHeight: 28,
+      fontWeight: '700',
+      color: c.ink,
+    },
+    heroTitle: {
+      fontSize: 32,
+      lineHeight: 38,
+      fontWeight: '800',
+      letterSpacing: -0.7,
+      color: c.ink,
+    },
+    link: { color: c.primary, fontSize: 14, fontWeight: '700' },
+    button: {
+      minHeight: 54,
+      borderRadius: 14,
+      paddingHorizontal: 20,
+      paddingVertical: 14,
+      backgroundColor: c.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexDirection: 'row',
+      gap: 10,
+    },
+    secondary: { backgroundColor: c.surface, borderWidth: 1, borderColor: c.line },
+    buttonText: {
+      color: c.onPrimary,
+      fontSize: 16,
+      fontWeight: '700',
+      textAlign: 'center',
+    },
+    iconButton: {
+      width: 48,
+      height: 48,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    card: {
+      backgroundColor: c.surface,
+      borderRadius: 14,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: c.line,
+      gap: 12,
+    },
+    input: {
+      borderWidth: 1,
+      borderColor: c.line,
+      borderRadius: 12,
+      paddingHorizontal: 14,
+      paddingVertical: 12,
+      backgroundColor: c.surface,
+      fontSize: 16,
+      color: c.ink,
+      minHeight: 52,
+    },
+    error: { fontSize: 13, color: c.error },
+    footer: {
+      padding: 16,
+      gap: 8,
+      backgroundColor: c.surface,
+      borderTopWidth: 1,
+      borderTopColor: c.line,
+      width: '100%',
+      maxWidth: 900,
+      alignSelf: 'center',
+    },
+    badge: {
+      borderRadius: 7,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      alignSelf: 'flex-start',
+    },
+    empty: { paddingVertical: 48, gap: 16, alignItems: 'center' },
+    emptyIcon: {
+      width: 84,
+      height: 84,
+      borderRadius: 28,
+      backgroundColor: c.soft,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    banner: {
+      padding: 14,
+      borderRadius: 12,
+      backgroundColor: c.soft,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+    },
+    stepper: {
+      borderWidth: 1,
+      borderColor: c.line,
+      borderRadius: 12,
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    stepButton: {
+      minWidth: 44,
+      minHeight: 44,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    choice: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 14,
+      padding: 16,
+      borderWidth: 1,
+      borderColor: c.line,
+      borderRadius: 16,
+      backgroundColor: c.surface,
+      marginBottom: 10,
+    },
+    scrim: {
+      flex: 1,
+      backgroundColor: c.scrim,
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 24,
+    },
+    dialog: {
+      width: '100%',
+      maxWidth: 460,
+      padding: 24,
+      borderRadius: 18,
+      backgroundColor: c.surface,
+      gap: 18,
+    },
+    demo: { backgroundColor: c.warningSoft, padding: 5, alignItems: 'center' },
+    demoText: {
+      fontSize: 10,
+      fontWeight: '700',
+      letterSpacing: 0.7,
+      color: c.warning,
+    },
+  });

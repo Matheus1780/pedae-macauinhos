@@ -35,3 +35,9 @@ Para Supabase, não basta trocar uma URL: autenticação, políticas `auth.uid()
 `BEGIN → identidade verificada → idempotência → bloquear feira/estoque → validar cotação/endereço/mercado → reservar itens → criar pedido e intenção de pagamento → outbox → COMMIT`.
 
 O provedor externo participa por uma saga: falha, tempo limite e respostas tardias são reconciliados; não existe transação ACID abrangendo PostgreSQL e banco/PSP. A preparação só inicia após pagamento confirmado, autorização de cartão validada ou pagamento na entrega aceito. Expiração e cancelamento liberam as reservas uma única vez.
+
+## Montagem e bônus (1.1)
+
+Aplicar `002_assembly_bonus.sql` **depois** de `001_initial.sql`, no banco escolhido futuramente. Nenhuma das migrações foi aplicada a um banco externo nesta entrega. A segunda migração mantém a fórmula do total do cliente e registra a atribuição/repasse de 1,5% dos produtos, financiado pela plataforma. Ver [regras e decisões](../docs/ATUALIZACAO-1.1.md).
+
+O backend deve bloquear pedido e atribuição na mesma transação, verificar subtotal autorizado e status, impedir mudança de responsável após a coleta e inserir um único lançamento por pedido. Não há políticas públicas de leitura/escrita nessas tabelas. Nunca aceitar destinatário, bônus ou status de liquidação enviados pelo cliente.

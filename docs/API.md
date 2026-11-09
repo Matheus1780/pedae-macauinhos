@@ -49,3 +49,13 @@ Ainda não conectados no cliente: OAuth Google/Apple, renovação de sessão, to
 `UNAUTHORIZED` (401), `FORBIDDEN` (403), `NOT_FOUND` (404), `RATE_LIMIT` (429), `OTP_INVALID`, `OTP_EXPIRED`, `OTP_LOCKED`, `STOCK_CHANGED`, `PRICE_CHANGED`, `QUOTE_EXPIRED`, `MINIMUM`, `OUTSIDE_COVERAGE`, `VEHICLE_CAPACITY`, `IDEMPOTENCY_CONFLICT`, `PAYMENT_DECLINED`, `PAYMENT_PENDING`, `NETWORK`.
 
 Em timeout do checkout, manter a chave de idempotência e consultar/repetir a mesma operação; nunca criar outra cobrança porque o cliente não recebeu a resposta. A UI conserva a chave enquanto a cotação e a tela permanecem válidas. A API de produção deve permitir recuperar uma tentativa após reinício do app e impedir dois pedidos originados da mesma cotação.
+
+## Extensão 1.1: montagem financiada pela plataforma
+
+`Market.assemblyMode: market | courier` e `assemblyRevision: number` são definidos pelo serviço do mercado. `Quote.assembly` contém `{ by, rateBps: 150, bonus, fundedBy: platform, policyRevision }`. `bonus` é calculado no servidor em centavos: `floor((subtotal * 150 + 5000) / 10000)`. A base é exclusivamente o subtotal dos produtos. `total = subtotal + deliveryFee + platformFee`; nunca somar o bônus.
+
+`Order.assembly` copia a alocação aprovada, acrescenta `state`, `assignedAt` e `reassignedAt?`. Estados: pending, assembling, ready, earned, void. `Order.quote` guarda o responsável originalmente cotado; `Order.assembly` guarda o destinatário atual. Ordens antigas podem omitir ambos os objetos.
+
+O checkout revalida a política de montagem além de endereço, produtos, disponibilidade e revisão da feira. O backend publica eventos de reatribuição antes da coleta sem duplicar o bônus e sem aumentar o total. Substituições recalculam a base; cancelamento expira o bônus. A confirmação de entrega e o livro de repasses exigem autorização de servidor, idempotência e conciliação financeira. A UI de cliente não escolhe nem liquida o recebedor.
+
+`demoConfigureAssembly` e `demoDelegateAssembly` são bloqueados pelo ApiRepository. A implementação real de decisão do mercado é uma operação administrativa/operacional separada, autenticada e auditada. `Product.image` aceita URL HTTPS de uma foto oficial; os identificadores `atlas:*` são exclusivos das fixtures locais. `Product.priceReference` distingue retailer, normalized e estimated no protótipo.

@@ -3,6 +3,7 @@ import { View, Text, Pressable, ScrollView } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
 import QRCode from 'react-native-qrcode-svg';
+import { AssemblyInfo } from '../ui/AssemblyInfo';
 import { useApp } from '../state/AppProvider';
 import {
   Screen,
@@ -16,12 +17,12 @@ import {
   Icon,
   Skeleton,
   Heading,
-  s,
+  useUI,
 } from '../ui/components';
-import { colors as c } from '../ui/theme';
 import { money, totals, digits } from '../domain/rules';
 import type { Address, Vehicle, PaymentMethod, Quote } from '../domain/types';
 export function Addresses() {
+  const { c, s } = useUI();
   const a = useApp();
   const { select } = useLocalSearchParams<{ select?: string }>();
   return (
@@ -102,6 +103,7 @@ export function Addresses() {
   );
 }
 export function AddressForm() {
+  const { c, s } = useUI();
   const a = useApp();
   const { id, select } = useLocalSearchParams<{
     id?: string;
@@ -189,6 +191,7 @@ export function AddressForm() {
   );
 }
 export function Delivery() {
+  const { c, s } = useUI();
   const a = useApp();
   const params = useLocalSearchParams<{ addressId?: string }>();
   const [vehicle, setVehicle] = useState<Vehicle>('moto');
@@ -216,7 +219,13 @@ export function Delivery() {
     return () => {
       active = false;
     };
-  }, [address?.id, JSON.stringify(address), vehicle, a.data!.cart.revision]);
+  }, [
+    address?.id,
+    JSON.stringify(address),
+    vehicle,
+    a.data!.cart.revision,
+    a.data!.markets.find((m) => m.id === a.data!.cart.marketId)?.assemblyRevision,
+  ]);
   if (!a.data!.profile)
     return (
       <Screen title="Definir entrega">
@@ -321,12 +330,14 @@ export function Delivery() {
           <Row label="Total do pedido" value={money(quote.total)} strong />
         </Card>
       ) : null}
+      {quote && <AssemblyInfo allocation={quote.assembly} />}
       {error && <Banner error text={error} />}
       <Banner text="Estimativas e capacidades são ilustrativas. No serviço real, distância, volume e disponibilidade serão calculados pelo servidor." />
     </Screen>
   );
 }
 export function Checkout() {
+  const { c, s } = useUI();
   const a = useApp();
   const params = useLocalSearchParams<{
     addressId?: string;
@@ -374,7 +385,14 @@ export function Checkout() {
     return () => {
       active = false;
     };
-  }, [address?.id, JSON.stringify(address), vehicle, a.data!.cart.revision, attempt]);
+  }, [
+    address?.id,
+    JSON.stringify(address),
+    vehicle,
+    a.data!.cart.revision,
+    a.data!.markets.find((m) => m.id === a.data!.cart.marketId)?.assemblyRevision,
+    attempt,
+  ]);
   async function confirm() {
     if (!quote || submitting.current) return;
     submitting.current = true;
@@ -471,11 +489,14 @@ export function Checkout() {
           <Row label="Subtotal dos produtos" value={money(quote.subtotal)} />
           <Row label={`Taxa de entrega · ${vehicle}`} value={money(quote.deliveryFee)} />
           <Row label="Taxa PedeAê" value={money(quote.platformFee)} />
-          <Text style={s.small}>A Taxa PedeAê remunera o uso e a manutenção da plataforma.</Text>
+          <Text style={s.small}>
+            A Taxa PedeAê mantém o serviço e financia o bônus de montagem de 1,5% dos produtos.
+          </Text>
           <View style={{ height: 1, backgroundColor: c.line }} />
           <Row label="Total do pedido" value={money(quote.total)} strong />
         </Card>
       ) : null}
+      {quote && <AssemblyInfo allocation={quote.assembly} />}
       <Card>
         <Heading
           title="Como vai pagar?"
@@ -529,6 +550,7 @@ export function Checkout() {
   );
 }
 export function Payment() {
+  const { c, s } = useUI();
   const a = useApp();
   const params = useLocalSearchParams<{
     addressId: string;
@@ -636,6 +658,7 @@ export function Payment() {
   );
 }
 export function Pix() {
+  const { c, s } = useUI();
   const a = useApp();
   const { id } = useLocalSearchParams<{ id: string }>();
   const order = a.data!.orders.find((o) => o.id === id);
@@ -675,7 +698,7 @@ export function Pix() {
         <>
           <Card style={{ alignItems: 'center', padding: 24 }}>
             {payload ? (
-              <QRCode value={payload} size={220} backgroundColor="white" color={c.ink} />
+              <QRCode value={payload} size={220} backgroundColor="white" color="#16231B" />
             ) : (
               <Banner error text="Aguardando o código do provedor de pagamento." />
             )}

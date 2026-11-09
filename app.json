@@ -3,11 +3,16 @@
     "name": "PedeAê",
     "slug": "pedeae-cliente",
     "scheme": "pedeae",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
-    "userInterfaceStyle": "light",
-    "ios": { "supportsTablet": true, "bundleIdentifier": "com.pedeae.cliente" },
-    "android": { "package": "com.pedeae.cliente" },
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.pedeae.cliente"
+    },
+    "android": {
+      "package": "com.pedeae.cliente"
+    },
     "web": {
       "bundler": "metro",
       "output": "single",
@@ -29,6 +34,8 @@
         }
       ]
     ],
-    "experiments": { "typedRoutes": false }
+    "experiments": {
+      "typedRoutes": false
+    }
   }
 }

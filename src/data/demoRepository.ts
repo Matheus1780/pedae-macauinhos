@@ -1,5 +1,12 @@
-import { initialSnapshot } from './fixtures';
-import { assertQuantity, digits, normalize, quoteCart, validateAddress } from '../domain/rules';
+import { initialSnapshot, migrateCatalog } from './fixtures';
+import {
+  assemblyBonus,
+  assertQuantity,
+  digits,
+  normalize,
+  quoteCart,
+  validateAddress,
+} from '../domain/rules';
 import { DomainError, ORDER_STATUSES } from '../domain/types';
 import type { Snapshot, Command, CheckoutInput, Quote, Vehicle, Order } from '../domain/types';
 import type { Repository, KeyValueStorage, Challenge } from './contracts';
@@ -34,6 +41,7 @@ export class DemoRepository implements Repository {
           const parsed = JSON.parse(raw) as Envelope;
           if (parsed.snapshot?.version !== 1 || !Array.isArray(parsed.snapshot.orders))
             throw Error();
+          parsed.snapshot = migrateCatalog(parsed.snapshot);
           this.data = parsed;
         } catch {
           throw new DomainError(
@@ -60,6 +68,7 @@ export class DemoRepository implements Repository {
     for (const o of s.orders)
       if (o.lifecycle === 'awaiting_payment' && (o.pixExpiresAt ?? 0) <= this.now()) {
         o.lifecycle = 'cancelled';
+        if (o.assembly) o.assembly.state = 'void';
         this.restoreStock(s, o);
       }
   }
@@ -87,6 +96,7 @@ export class DemoRepository implements Repository {
         'demoAdvance',
         'demoPay',
         'demoSubstitution',
+        'demoDelegateAssembly',
         'resolveSubstitution',
         'deleteAccount',
       ];
@@ -268,7 +278,28 @@ export class DemoRepository implements Repository {
             );
           this.restoreStock(s, o);
           o.lifecycle = 'cancelled';
+          if (o.assembly) o.assembly.state = 'void';
           if (['paid', 'authorized'].includes(o.paymentStatus)) o.paymentStatus = 'refunded';
+          break;
+        }
+        case 'demoConfigureAssembly': {
+          const market = s.markets.find((m) => m.id === c.marketId);
+          if (!market || !['market', 'courier'].includes(c.by))
+            throw new DomainError('MARKET', 'Mercado inválido.');
+          if (market.assemblyMode !== c.by) {
+            market.assemblyMode = c.by;
+            market.assemblyRevision++;
+          }
+          break;
+        }
+        case 'demoDelegateAssembly': {
+          const o = order(c.orderId);
+          if (!o.assembly || o.lifecycle !== 'active' || o.statusIndex > 1)
+            throw new DomainError('ASSEMBLY_CLOSED', 'A montagem já foi encerrada.');
+          if (o.assembly.by === 'market') {
+            o.assembly.by = 'courier';
+            o.assembly.reassignedAt = new Date(this.now()).toISOString();
+          }
           break;
         }
         case 'demoPay': {
@@ -299,6 +330,9 @@ export class DemoRepository implements Repository {
             );
           o.statusIndex = Math.min(4, o.statusIndex + 1);
           o.status = ORDER_STATUSES[o.statusIndex]!;
+          if (o.assembly)
+            o.assembly.state =
+              o.statusIndex === 1 ? 'assembling' : o.statusIndex === 4 ? 'earned' : 'ready';
           o.history.push({
             status: o.status,
             at: new Date(this.now()).toISOString(),
@@ -371,6 +405,8 @@ export class DemoRepository implements Repository {
           sub.state = c.accept ? 'accepted' : 'declined';
           o.quote.subtotal -= difference;
           o.quote.total -= difference;
+          if (o.assembly) o.assembly.bonus = assemblyBonus(o.quote.subtotal);
+          if (o.quote.assembly) o.quote.assembly.bonus = assemblyBonus(o.quote.subtotal);
           break;
         }
         case 'logout':
@@ -497,6 +533,11 @@ export class DemoRepository implements Repository {
           'QUOTE_EXPIRED',
           'O endereço foi alterado. Revise a entrega novamente.',
         );
+      if (current.assembly?.policyRevision !== q.assembly?.policyRevision)
+        throw new DomainError(
+          'QUOTE_EXPIRED',
+          'O responsável pela montagem mudou. Revise a entrega.',
+        );
       if (current.total !== q.total)
         throw new DomainError('PRICE_CHANGED', 'O preço mudou. Revise sua feira.');
       if (!['pix', 'credit', 'debit', 'cash', 'terminal'].includes(input.payment))
@@ -530,6 +571,9 @@ export class DemoRepository implements Repository {
           };
         }),
         quote: clone(q),
+        assembly: q.assembly
+          ? { ...clone(q.assembly), state: 'pending', assignedAt: at }
+          : undefined,
         address: clone(address!),
         status: 'Pedido Enviado',
         statusIndex: 0,

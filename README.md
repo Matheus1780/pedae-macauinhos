@@ -4,6 +4,10 @@
 
 Protótipo funcional em **React Native + Expo + TypeScript**, para Android, iOS e navegador. Implementa a jornada do cliente: descobrir mercados locais, montar a **Minha feira**, definir entrega, revisar custos e acompanhar pedidos.
 
+## Novidades da versão 1.1
+
+Logo adaptada ao claro/escuro, adição direta pelo **+**, **120 produtos diferentes (20 por categoria)** com imagens locais de IA e bônus de montagem de **1,5% dos produtos**, pago pela PedeAê ao mercado ou entregador. Consulte [as regras, fontes de preços e detalhes da atualização](docs/ATUALIZACAO-1.1.md).
+
 ## Executar
 
 Requisitos: Node.js 22.13+ e npm. Use a versão do Expo Go compatível com SDK 54 ou um development build. iOS local requer macOS/Xcode; Android local requer Android Studio.
@@ -16,6 +20,8 @@ npm start
 npm run android
 npm run ios
 ```
+
+**No Windows:** depois de extrair o projeto, dê dois cliques em `INICIAR-WINDOWS.cmd`. Ele instala os componentes e abre o app no navegador. Mantenha a janela aberta enquanto estiver usando o app.
 
 Não é necessário configurar conta de banco, API ou pagamentos para testar. O padrão é `demo`. Copie `.env.example` para `.env` apenas quando quiser configurar o adaptador HTTP.
 
@@ -112,4 +118,12 @@ docs/                Especificação visual, arquitetura, API e validação
 tests/               Regras de negócio, transporte e jornada no navegador
 ```
 
-As fotos são ilustrativas, carregadas do Unsplash, com fallback local nos produtos. Os mercados e preços deste protótipo são fictícios. As referências fornecidas orientaram a linguagem visual; as telas de ganhos e oportunidades do entregador estão fora do módulo Cliente.
+As 120 imagens de produtos são ilustrações realistas geradas por IA e incluídas no projeto; fotos de capa dos mercados vêm do Unsplash. Os estabelecimentos são demonstrativos. Parte dos preços vem de referências de varejo pesquisadas, com fonte no detalhe; os demais estão explicitamente marcados como estimativas. As referências fornecidas orientaram a linguagem visual; as telas de ganhos e oportunidades do entregador estão fora do módulo Cliente.
+
+## Atualizar a cópia do computador
+
+Se baixou um ZIP do GitHub, essa pasta não se atualiza sozinha: baixe o ZIP atualizado e extraia em uma **nova pasta**, preservando a anterior e qualquer arquivo `.env` próprio. Abra a nova pasta no VS Code ou execute `INICIAR-WINDOWS.cmd`.
+
+Se clonou com Git/GitHub Desktop, use **Pull origin** no GitHub Desktop (ou `git pull` no terminal da pasta, depois de salvar suas alterações). Em seguida execute `npm ci` e `npm run web`. Não é preciso baixar o projeto inteiro novamente com Git.
+
+Os dados do protótipo ficam no navegador/dispositivo. A migração mantém os pedidos antigos e atualiza o catálogo ao abrir a nova versão no mesmo endereço de acesso.

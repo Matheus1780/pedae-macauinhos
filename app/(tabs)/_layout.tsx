@@ -1,8 +1,9 @@
 import { Tabs } from 'expo-router';
 import { Icon } from '../../src/ui/components';
-import { colors } from '../../src/ui/theme';
+import { useTheme } from '../../src/state/ThemeProvider';
 import { useApp } from '../../src/state/AppProvider';
 export default function TabLayout() {
+  const { colors } = useTheme();
   const { data } = useApp();
   const count = data?.cart.items.reduce((n, i) => n + i.quantity, 0) ?? 0;
   return (
@@ -11,7 +12,15 @@ export default function TabLayout() {
         headerShown: false,
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.muted,
-        tabBarStyle: { height: 76, paddingTop: 6, paddingBottom: 12 },
+        tabBarStyle: {
+          height: 76,
+          paddingTop: 6,
+          paddingBottom: 12,
+          backgroundColor: colors.surface,
+          borderTopColor: colors.line,
+        },
+        sceneStyle: { backgroundColor: colors.background },
+        tabBarBadgeStyle: { backgroundColor: colors.primary, color: colors.onPrimary },
         tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
       }}
     >

@@ -85,3 +85,9 @@ Nunca armazenar PAN, CVV, biometria, segredo de banco ou chave administrativa no
 6. Testes em dispositivos, leitores de tela, fonte ampliada, conexão ruim e contratos com dados reais controlados.
 
 Eventos futuros sugeridos: `market_viewed`, `product_viewed`, `fair_item_added`, `checkout_started`, `quote_changed`, `payment_pending`, `order_created`, `substitution_answered`, `delivery_completed`. Usar IDs pseudônimos e propriedades mínimas; analytics não está conectado neste protótipo.
+
+## Atualização 1.1
+
+ThemeProvider envolve AppProvider e fornece os tokens semânticos; trocar a aparência não remonta as rotas nem limpa a feira. A preferência tem persistência independente. O catálogo mantém os IDs anteriores e migra para catalogVersion 2, preservando estoque e dados privados. Cards adicionam por comando serializado e abrem detalhes por uma ação separada.
+
+A cotação congela a política de montagem; a atribuição do pedido registra o responsável atual e a progressão do bônus. A plataforma financia 150 pontos-base do subtotal de produtos; o total do cliente não contém esse bônus como parcela adicional. A migração SQL 002 prepara a atribuição e um livro único de repasses por pedido para o backend futuro.

@@ -3,7 +3,7 @@ import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { repository } from '../data';
 import type { Snapshot, Command, Quote, Vehicle, CheckoutInput, Order } from '../domain/types';
 import { feedback } from '../ui/feedback';
-import { colors } from '../ui/theme';
+import { useTheme } from './ThemeProvider';
 type Context = {
   data: Snapshot | null;
   loading: boolean;
@@ -19,6 +19,7 @@ type Context = {
 };
 const AppContext = createContext<Context | null>(null);
 export function AppProvider({ children }: { children: React.ReactNode }) {
+  const { colors } = useTheme();
   const [data, setData] = useState<Snapshot | null>(null),
     [loading, setLoading] = useState(true),
     [error, setError] = useState<string | null>(null),
@@ -89,9 +90,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           accessibilityRole="alert"
           accessibilityLiveRegion="polite"
           onPress={() => setToast(null)}
-          style={[styles.toast, toast.error && { backgroundColor: colors.error }]}
+          style={[styles.toast, { backgroundColor: toast.error ? colors.errorSoft : colors.ink }]}
         >
-          <Text style={styles.message}>{toast.text}</Text>
+          <Text style={[styles.message, { color: toast.error ? colors.error : colors.surface }]}>
+            {toast.text}
+          </Text>
         </Pressable>
       )}
     </AppContext.Provider>
@@ -110,7 +113,6 @@ const styles = StyleSheet.create({
     right: 20,
     maxWidth: 680,
     alignSelf: 'center',
-    backgroundColor: colors.ink,
     padding: 16,
     borderRadius: 16,
     zIndex: 100,

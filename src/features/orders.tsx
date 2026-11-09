@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, Pressable, Linking } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import Svg, { Path, Circle, Rect, Text as SvgText } from 'react-native-svg';
+import { AssemblyInfo } from '../ui/AssemblyInfo';
 import { useApp } from '../state/AppProvider';
 import { ORDER_STATUSES } from '../domain/types';
 import { money } from '../domain/rules';
@@ -17,9 +18,8 @@ import {
   Row,
   Confirm,
   Field,
-  s,
+  useUI,
 } from '../ui/components';
-import { colors as c } from '../ui/theme';
 const date = (iso: string) =>
   new Date(iso).toLocaleString('pt-BR', {
     timeZone: 'America/Fortaleza',
@@ -29,6 +29,7 @@ const date = (iso: string) =>
     minute: '2-digit',
   });
 export function Orders() {
+  const { c, s } = useUI();
   const { data } = useApp();
   const [filter, setFilter] = useState('Todos');
   const orders = data!.orders.filter(
@@ -60,7 +61,7 @@ export function Orders() {
               style={{
                 fontWeight: '600',
                 fontSize: 12,
-                color: filter === x ? 'white' : c.primary,
+                color: filter === x ? c.onPrimary : c.primary,
               }}
             >
               {x}
@@ -136,18 +137,19 @@ export function Orders() {
   );
 }
 function DemoMap({ index }: { index: number }) {
+  const { c, s } = useUI();
   const position =
     index === 2 ? { x: 90, y: 180 } : index === 3 ? { x: 220, y: 108 } : { x: 310, y: 65 };
   return (
     <Card style={{ padding: 0, overflow: 'hidden' }}>
       <Svg width="100%" height={240} viewBox="0 0 400 240">
-        <Rect width={400} height={240} fill="#EDF2E9" />
+        <Rect width={400} height={240} fill={c.map} />
         <Path
           d="M0 45H400M0 100H400M0 160H400M0 210H400M60 0V240M145 0V240M250 0V240M340 0V240"
-          stroke="#FFFFFF"
+          stroke={c.road}
           strokeWidth={16}
         />
-        <Path d="M0 0L400 220M80 240L380 0" stroke="#FFFFFF" strokeWidth={9} />
+        <Path d="M0 0L400 220M80 240L380 0" stroke={c.road} strokeWidth={9} />
         <Path
           d="M85 180L145 180L145 110L250 110L310 65"
           fill="none"
@@ -157,10 +159,10 @@ function DemoMap({ index }: { index: number }) {
         />
         <Circle cx={85} cy={180} r={18} fill={c.primary} />
         <Circle cx={310} cy={65} r={18} fill={c.primary} />
-        <SvgText x={85} y={185} fill="white" textAnchor="middle" fontSize={15}>
+        <SvgText x={85} y={185} fill={c.onPrimary} textAnchor="middle" fontSize={15}>
           M
         </SvgText>
-        <SvgText x={310} y={70} fill="white" textAnchor="middle" fontSize={15}>
+        <SvgText x={310} y={70} fill={c.onPrimary} textAnchor="middle" fontSize={15}>
           C
         </SvgText>
         <Circle cx={position.x} cy={position.y} r={27} fill="#087F3D22" />
@@ -169,7 +171,7 @@ function DemoMap({ index }: { index: number }) {
           cy={position.y}
           r={9}
           fill={c.primary}
-          stroke="white"
+          stroke={c.surface}
           strokeWidth={4}
         />
         <SvgText x={200} y={26} fill={c.muted} textAnchor="middle" fontSize={12}>
@@ -186,6 +188,7 @@ function DemoMap({ index }: { index: number }) {
   );
 }
 export function OrderDetail() {
+  const { c, s } = useUI();
   const a = useApp();
   const { id, received } = useLocalSearchParams<{
     id: string;
@@ -291,6 +294,9 @@ export function OrderDetail() {
                     <Text style={[s.label, { color: i === order.statusIndex ? c.primary : c.ink }]}>
                       {status}
                     </Text>
+                    {i === 1 && order.assembly?.by === 'courier' && (
+                      <Text style={s.small}>Entregador selecionando os produtos no mercado</Text>
+                    )}
                     {event && <Text style={s.small}>{date(event.at)}</Text>}
                   </View>
                 </View>
@@ -309,6 +315,19 @@ export function OrderDetail() {
             </Card>
           )}
         </>
+      )}
+      <AssemblyInfo allocation={order.assembly} state={order.assembly?.state} />
+      {a.demo && active && order.statusIndex <= 1 && order.assembly?.by === 'market' && (
+        <Button
+          secondary
+          label="Simular: mercado delega montagem"
+          onPress={() =>
+            void a
+              .send({ type: 'demoDelegateAssembly', orderId: order.id })
+              .then(() => a.notify('O entregador montará a feira. Seu total não mudou.'))
+              .catch((e) => a.notify(e.message, true))
+          }
+        />
       )}
       {pending.map((sub) => (
         <Card key={sub.id} style={{ borderColor: c.orange }}>
@@ -457,6 +476,7 @@ export function OrderDetail() {
   );
 }
 export function Chat() {
+  const { c, s } = useUI();
   const a = useApp();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [text, setText] = useState('');
@@ -503,7 +523,7 @@ export function Chat() {
             style={{
               padding: 14,
               borderRadius: 18,
-              backgroundColor: m.sender === 'client' ? c.soft : 'white',
+              backgroundColor: m.sender === 'client' ? c.soft : c.surface,
               alignSelf: m.sender === 'client' ? 'flex-end' : 'flex-start',
               maxWidth: '85%',
             }}
@@ -525,6 +545,7 @@ export function Chat() {
   );
 }
 export function Support() {
+  const { c, s } = useUI();
   const a = useApp();
   const { orderId } = useLocalSearchParams<{ orderId?: string }>();
   const [topic, setTopic] = useState('');
@@ -580,6 +601,7 @@ export function Support() {
   );
 }
 export function Notifications() {
+  const { c, s } = useUI();
   const { data } = useApp();
   const events = data!.orders
     .flatMap((o) =>

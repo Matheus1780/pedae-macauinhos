@@ -2,10 +2,11 @@ import React, { useState } from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { router } from 'expo-router';
 import { useApp } from '../state/AppProvider';
-import { Screen, Card, Icon, Button, Field, Banner, Empty, Confirm, s } from '../ui/components';
+import { Screen, Card, Icon, Button, Field, Banner, Empty, Confirm, useUI } from '../ui/components';
 import type { IconName } from '../ui/components';
-import { colors as c } from '../ui/theme';
+import { ThemeControl } from '../ui/ThemeControl';
 export function Profile() {
+  const { c, s } = useUI();
   const a = useApp();
   const [logout, setLogout] = useState(false);
   const profile = a.data!.profile;
@@ -79,6 +80,7 @@ export function Profile() {
         </View>
       </View>
       {!profile && <Button label="Entrar ou criar conta" onPress={() => router.push('/login')} />}
+      <ThemeControl />
       <Card style={{ padding: 0 }}>
         {links.map((link, i) => (
           <Pressable
@@ -105,7 +107,7 @@ export function Profile() {
       </Card>
       {profile && <Button label="Sair da conta" secondary onPress={() => setLogout(true)} />}
       <Text style={[s.small, { textAlign: 'center', padding: 16 }]}>
-        PedeAê · Cliente v1.0.0{a.demo ? '\nAmbiente de demonstração' : ''}
+        PedeAê · Cliente v1.1.0{a.demo ? '\nAmbiente de demonstração' : ''}
       </Text>
       <Confirm
         visible={logout}
@@ -131,6 +133,7 @@ export function Profile() {
   );
 }
 export function Account() {
+  const { c, s } = useUI();
   const a = useApp();
   const [name, setName] = useState(a.data!.profile?.name ?? ''),
     [email, setEmail] = useState(a.data!.profile?.email ?? '');
@@ -186,6 +189,7 @@ export function Account() {
   );
 }
 export function Cards() {
+  const { c, s } = useUI();
   const a = useApp();
   const [last4, setLast4] = useState(''),
     [brand, setBrand] = useState('Visa');
@@ -272,6 +276,7 @@ export function Cards() {
   );
 }
 export function Privacy() {
+  const { c, s } = useUI();
   const a = useApp();
   const [confirm, setConfirm] = useState(false);
   return (

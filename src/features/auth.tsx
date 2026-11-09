@@ -4,10 +4,10 @@ import { router } from 'expo-router';
 import * as Location from 'expo-location';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { useApp } from '../state/AppProvider';
+import { BrandLogo } from '../ui/BrandLogo';
 import { repository } from '../data';
 import type { Challenge } from '../data/contracts';
-import { Screen, Button, Card, Field, Icon, Banner, Choice, s } from '../ui/components';
-import { colors as c } from '../ui/theme';
+import { Screen, Button, Card, Field, Icon, Banner, Choice, useUI } from '../ui/components';
 import { digits } from '../domain/rules';
 const slides = [
   {
@@ -30,6 +30,7 @@ const slides = [
   },
 ];
 export function Onboarding() {
+  const { c, s } = useUI();
   const [step, setStep] = useState(0);
   const slide = slides[step]!;
   const swipe = useMemo(
@@ -61,9 +62,7 @@ export function Onboarding() {
       }
     >
       <View {...swipe.panHandlers} style={{ paddingVertical: 24, gap: 28 }}>
-        <Text style={{ fontSize: 30, fontWeight: '800', color: c.primary }}>
-          PedeAê<Text style={{ color: c.orange }}> ✦</Text>
-        </Text>
+        <BrandLogo width={200} />
         <View
           style={{
             height: 260,
@@ -128,6 +127,7 @@ export function Onboarding() {
   );
 }
 export function LocationScreen() {
+  const { c, s } = useUI();
   const a = useApp();
   const [city, setCity] = useState(a.data?.city || 'Parambu, CE'),
     [busy, setBusy] = useState(false),
@@ -206,6 +206,7 @@ export function LocationScreen() {
   );
 }
 export function Login() {
+  const { c, s } = useUI();
   const a = useApp();
   const [phone, setPhone] = useState(''),
     [name, setName] = useState(''),
@@ -363,6 +364,7 @@ export function Login() {
   );
 }
 export function Recover() {
+  const { c, s } = useUI();
   const a = useApp();
   const [identifier, setIdentifier] = useState(''),
     [sent, setSent] = useState(false),
@@ -423,6 +425,7 @@ export function Recover() {
   );
 }
 export function Biometrics() {
+  const { c, s } = useUI();
   const a = useApp();
   const [available, setAvailable] = useState(false),
     [busy, setBusy] = useState(false);

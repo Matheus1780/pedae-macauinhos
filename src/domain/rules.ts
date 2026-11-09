@@ -13,6 +13,16 @@ export function assertQuantity(n: number) {
   if (!Number.isSafeInteger(n) || n < 0 || n > 99)
     throw new DomainError('QUANTITY', 'Escolha uma quantidade entre 0 e 99.');
 }
+// BRL cents, round half up; delivery and platform fee are never part of the base.
+export function assemblyBonus(subtotal: number): number {
+  if (
+    !Number.isSafeInteger(subtotal) ||
+    subtotal < 0 ||
+    !Number.isSafeInteger(subtotal * 150 + 5000)
+  )
+    throw new DomainError('MONEY', 'Valor de produtos inválido.');
+  return Math.floor((subtotal * 150 + 5000) / 10000);
+}
 export function totals(cart: Cart, products: Product[]) {
   return cart.items.reduce(
     (a, item) => {
@@ -74,6 +84,13 @@ export function quoteCart(
     deliveryFee,
     platformFee,
     total: subtotal + deliveryFee + platformFee,
+    assembly: {
+      by: market.assemblyMode,
+      rateBps: 150,
+      bonus: assemblyBonus(subtotal),
+      fundedBy: 'platform',
+      policyRevision: market.assemblyRevision,
+    },
     weightGrams,
     expiresAt: now + 5 * 60000,
   };

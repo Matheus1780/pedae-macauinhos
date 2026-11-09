@@ -349,3 +349,9 @@ Protótipo principal: T01 → T02 → T07 → T09 → T11 → T12 → T14 → T0
 - Os cinco estados preservam a ordem e têm origem verificável; pagamento pendente não simula preparação.
 - APIs reais negam leitura/escrita em pedido/endereço/cartão de outro cliente e rejeitam comandos demonstrativos.
 - Antes de lançamento: validar dispositivo real, leitor de tela, teclado, fonte ampliada, contraste completo, rede intermitente, reconexão e disponibilidade dos provedores.
+
+## Revisão 1.1 (precedência sobre os exemplos visuais anteriores)
+
+Consultar [ATUALIZACAO-1.1.md](ATUALIZACAO-1.1.md) para os novos componentes, fontes e regra de montagem. Todos os componentes passam a usar os tokens semânticos reativos Light/Dark. Home e onboarding usam a logo enviada com duas variantes; o Perfil possui AppearanceControl. Cards de produto usam ações separadas: foto/nome abrem o detalhe, + adiciona diretamente e muda para controle de quantidade. Busca e catálogo carregam 24 ofertas por vez, com Mostrar mais; cada categoria de cada mercado contém 20 itens.
+
+AssemblyInfo aparece na entrega, checkout e acompanhamento: responsável, tarefa, bônus e informação de que a plataforma o financia. Não existe nova linha de cobrança no total do cliente. A preparação mantém o status oficial Mercado Preparando e acrescenta a descrição do entregador selecionando os produtos quando aplicável.

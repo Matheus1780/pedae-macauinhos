@@ -2,8 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { DemoRepository } from '../src/data/demoRepository';
 import { ApiRepository } from '../src/data/apiRepository';
-import { initialSnapshot } from '../src/data/fixtures';
-import { quoteCart, totals, money } from '../src/domain/rules';
+import { initialSnapshot, migrateCatalog, categories } from '../src/data/fixtures';
+import { assemblyBonus, quoteCart, totals, money } from '../src/domain/rules';
 import type { Address, CheckoutInput } from '../src/domain/types';
 const address: Address = {
   id: 'home',
@@ -51,18 +51,19 @@ async function ready(repo: DemoRepository) {
 test('money totals include products, delivery and platform exactly', async () => {
   const { repo } = setup();
   const q = await ready(repo);
-  assert.equal(q.subtotal, 2590);
-  assert.equal(q.total, 3590);
+  assert.equal(q.subtotal, 3122);
+  assert.equal(q.total, 4122);
   assert.equal(q.total, q.subtotal + q.deliveryFee + q.platformFee);
-  assert.match(money(q.total), /35,90/);
+  assert.match(money(q.total), /41,22/);
 });
-test('official sample six products total 31.54', () => {
+test('six-item produce basket uses the updated fixed-portion prices', () => {
   const s = initialSnapshot();
-  s.cart.items = s.products
-    .filter((p) => p.marketId === 'bom-preco')
-    .slice(0, 6)
-    .map((p) => ({ productId: p.id, quantity: 1, note: '' }));
-  assert.equal(totals(s.cart, s.products).subtotal, 3154);
+  s.cart.items = [1, 2, 3, 4, 5, 6].map((id) => ({
+    productId: `bom-preco-${id}`,
+    quantity: 1,
+    note: '',
+  }));
+  assert.equal(totals(s.cart, s.products).subtotal, 4386);
 });
 test('negative and fractional quantities rejected without changing state', async () => {
   const { repo } = setup();
@@ -420,4 +421,166 @@ test('changing a saved address cannot alter an existing order snapshot', async (
     (await repo.load()).orders.find((o) => o.id === order.id)!.address.street,
     'Rua de teste',
   );
+});
+
+test('each market has 20 distinct products and image cells per category', () => {
+  const s = initialSnapshot();
+  for (const m of s.markets)
+    for (const category of categories) {
+      const items = s.products.filter((p) => p.marketId === m.id && p.category === category.name);
+      assert.equal(items.length, 20);
+      assert.equal(new Set(items.map((p) => p.name)).size, 20);
+      assert.equal(new Set(items.map((p) => p.image)).size, 20);
+      assert(items.every((p) => p.image.startsWith('atlas:') && p.priceReference && p.price > 0));
+    }
+  assert.equal(new Set(s.products.map((p) => p.id)).size, 360);
+});
+test('assembly bonus rounds once in cents, on products only', () => {
+  for (const [base, bonus] of [
+    [0, 0],
+    [33, 0],
+    [34, 1],
+    [100, 2],
+    [10000, 150],
+    [3122, 47],
+  ])
+    assert.equal(assemblyBonus(base!), bonus);
+  for (const invalid of [-1, 1.5, NaN, Infinity, Number.MAX_SAFE_INTEGER])
+    assert.throws(() => assemblyBonus(invalid));
+});
+test('platform funds assembly and changing vehicle never changes the bonus', async () => {
+  const { repo } = setup();
+  const moto = await ready(repo),
+    carro = await repo.quote('home', 'carro');
+  assert.equal(moto.assembly?.by, 'market');
+  assert.equal(moto.assembly?.fundedBy, 'platform');
+  assert.equal(moto.assembly?.bonus, 47);
+  assert.equal(carro.assembly?.bonus, 47);
+  assert.equal(moto.total, 4122);
+  assert.equal(carro.total - moto.total, 700);
+});
+test('courier receives the bonus when the market does not assemble', async () => {
+  const { repo } = setup();
+  await ready(repo);
+  await repo.dispatch({
+    type: 'addItem',
+    productId: 'sabor-terra-7',
+    quantity: 1,
+    switchMarket: true,
+  });
+  const q = await repo.quote('home', 'moto');
+  assert.equal(q.assembly?.by, 'courier');
+  const { order } = await repo.checkout({
+    quoteId: q.id,
+    payment: 'cash',
+    idempotencyKey: 'courier',
+  });
+  assert.equal(order.assembly?.by, 'courier');
+  assert.equal(order.assembly?.bonus, 47);
+  assert.equal(order.quote.deliveryFee, 790);
+  assert.equal(order.quote.total, 4122);
+});
+test('market policy changes invalidate quotes even when the total stays equal', async () => {
+  const { repo } = setup();
+  const q = await ready(repo);
+  await repo.dispatch({ type: 'demoConfigureAssembly', marketId: 'bom-preco', by: 'courier' });
+  await assert.rejects(
+    repo.checkout({ quoteId: q.id, payment: 'cash', idempotencyKey: 'stale-policy' }),
+    { code: 'QUOTE_EXPIRED' },
+  );
+  const fresh = await repo.quote('home', 'moto');
+  assert.equal(fresh.total, q.total);
+  assert.equal(fresh.assembly?.by, 'courier');
+});
+test('delegation transfers the one bonus without charging the client again', async () => {
+  const { repo } = setup();
+  const q = await ready(repo);
+  const { order } = await repo.checkout({
+    quoteId: q.id,
+    payment: 'cash',
+    idempotencyKey: 'delegate',
+  });
+  await repo.dispatch({ type: 'demoDelegateAssembly', orderId: order.id });
+  let s = await repo.dispatch({ type: 'demoDelegateAssembly', orderId: order.id });
+  assert.equal(s.orders[0]!.assembly?.by, 'courier');
+  assert.equal(s.orders[0]!.quote.total, q.total);
+  assert.equal(s.orders[0]!.quote.assembly?.by, 'market'); // Original quote snapshot is retained.
+  s = await repo.dispatch({ type: 'demoAdvance', orderId: order.id });
+  assert.equal(s.orders[0]!.assembly?.state, 'assembling');
+  s = await repo.dispatch({ type: 'demoAdvance', orderId: order.id });
+  assert.equal(s.orders[0]!.assembly?.state, 'ready');
+  await assert.rejects(repo.dispatch({ type: 'demoDelegateAssembly', orderId: order.id }), {
+    code: 'ASSEMBLY_CLOSED',
+  });
+  await repo.dispatch({ type: 'demoAdvance', orderId: order.id });
+  s = await repo.dispatch({ type: 'demoAdvance', orderId: order.id });
+  assert.equal(s.orders[0]!.assembly?.state, 'earned');
+  assert.equal(s.orders[0]!.assembly?.bonus, 47);
+  await assert.rejects(repo.dispatch({ type: 'demoAdvance', orderId: order.id }), {
+    code: 'ORDER_INACTIVE',
+  });
+});
+test('cancellation and PIX expiration void the bonus', async () => {
+  for (const expire of [false, true]) {
+    const { repo, tick } = setup();
+    const q = await ready(repo);
+    const { order } = await repo.checkout({
+      quoteId: q.id,
+      payment: 'pix',
+      idempotencyKey: 'void',
+    });
+    if (expire) tick(300001);
+    else await repo.dispatch({ type: 'cancel', orderId: order.id });
+    assert.equal((await repo.load()).orders[0]!.assembly?.state, 'void');
+  }
+});
+test('substitution updates bonus from the remaining product subtotal', async () => {
+  const { repo } = setup();
+  const q = await ready(repo);
+  const { order } = await repo.checkout({
+    quoteId: q.id,
+    payment: 'cash',
+    idempotencyKey: 'sub-bonus',
+  });
+  await repo.dispatch({ type: 'demoAdvance', orderId: order.id });
+  const s = await repo.dispatch({ type: 'demoSubstitution', orderId: order.id });
+  const result = await repo.dispatch({
+    type: 'resolveSubstitution',
+    id: s.substitutions[0]!.id,
+    accept: true,
+  });
+  const o = result.orders[0]!;
+  assert.equal(o.assembly?.bonus, assemblyBonus(o.quote.subtotal));
+  assert.equal(o.quote.total, o.quote.subtotal + o.quote.deliveryFee + o.quote.platformFee);
+});
+test('catalog migration retains historical order money, stock and the existing cart', async () => {
+  const { repo, values, storage } = setup();
+  const q = await ready(repo);
+  const { order } = await repo.checkout({
+    quoteId: q.id,
+    payment: 'cash',
+    idempotencyKey: 'legacy-order',
+  });
+  await repo.dispatch({
+    type: 'addItem',
+    productId: 'bom-preco-1',
+    quantity: 2,
+    note: 'Menos madura',
+  });
+  const legacy = JSON.parse(values.get('pedeae.demo.v1')!);
+  delete legacy.snapshot.catalogVersion;
+  legacy.snapshot.products = legacy.snapshot.products.filter(
+    (p: { id: string }) => /-(?:[1-9]|1[0-4])$/.test(p.id) && !p.id.includes('mercearia'),
+  );
+  delete legacy.snapshot.orders[0].assembly;
+  delete legacy.snapshot.orders[0].quote.assembly;
+  values.set('pedeae.demo.v1', JSON.stringify(legacy));
+  const upgraded = await new DemoRepository(storage).load();
+  assert.equal(upgraded.products.length, 360);
+  assert.equal(upgraded.orders[0]!.quote.total, order.quote.total);
+  assert.equal(upgraded.orders[0]!.assembly, undefined);
+  assert.equal(upgraded.cart.items[0]!.quantity, 2);
+  assert.equal(upgraded.cart.items[0]!.note, 'Menos madura');
+  assert.equal(upgraded.products.find((p) => p.id === 'bom-preco-7')!.stock, 29);
+  assert.deepEqual(migrateCatalog(upgraded), upgraded);
 });

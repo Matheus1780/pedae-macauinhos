@@ -1,63 +1,31 @@
-import type { Snapshot, Product, Category } from '../domain/types';
+import type { Snapshot, Product, Category, Market } from '../domain/types';
+import catalog from './catalog.json';
 const photo = (id: string) => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=720&q=80`;
-export const categories: { name: Category; icon: string; color: string }[] = [
-  { name: 'Mercearia', icon: 'basket-outline', color: '#FFF0D8' },
-  { name: 'Bebidas', icon: 'wine-outline', color: '#E8F1FC' },
-  { name: 'Higiene', icon: 'sparkles-outline', color: '#F3EAFE' },
-  { name: 'Limpeza', icon: 'water-outline', color: '#E1F3F2' },
-  { name: 'Hortifruti', icon: 'leaf-outline', color: '#E8F3DE' },
-  { name: 'Alimentos Frescos', icon: 'fish-outline', color: '#FBE9DF' },
+export const categories: { name: Category; icon: string; color: string; key: string }[] = [
+  { name: 'Mercearia', icon: 'basket-outline', color: '#EAF0E9', key: 'mercearia' },
+  { name: 'Bebidas', icon: 'wine-outline', color: '#EAF0E9', key: 'bebidas' },
+  { name: 'Higiene', icon: 'heart-outline', color: '#EAF0E9', key: 'higiene' },
+  { name: 'Limpeza', icon: 'water-outline', color: '#EAF0E9', key: 'limpeza' },
+  { name: 'Hortifruti', icon: 'leaf-outline', color: '#EAF0E9', key: 'hortifruti' },
+  { name: 'Alimentos Frescos', icon: 'fish-outline', color: '#EAF0E9', key: 'frescos' },
 ];
-const productRows: [string, Category, string, number, number, string, string][] = [
-  [
-    'Banana prata',
-    'Hortifruti',
-    'Bandeja 1 kg',
-    649,
-    1000,
-    '🍌',
-    'photo-1571771894821-ce9b6c11b08e',
-  ],
-  ['Tomate salada', 'Hortifruti', 'Bandeja 500 g', 449, 500, '🍅', 'photo-1546094096-0df4bcaaa337'],
-  [
-    'Batata inglesa',
-    'Hortifruti',
-    'Pacote 1 kg',
-    529,
-    1000,
-    '🥔',
-    'photo-1518977676601-b53f82aba655',
-  ],
-  [
-    'Cenoura fresca',
-    'Hortifruti',
-    'Bandeja 500 g',
-    329,
-    500,
-    '🥕',
-    'photo-1445282768818-728615cc910a',
-  ],
-  ['Alface crespa', 'Hortifruti', '1 unidade', 299, 200, '🥬', 'photo-1622206151226-18ca2c9ab4a1'],
-  [
-    'Ovos vermelhos',
-    'Alimentos Frescos',
-    '12 unidades',
-    899,
-    800,
-    '🥚',
-    'photo-1506976785307-8732e854ad03',
-  ],
-  ['Arroz branco tipo 1', 'Mercearia', 'Pacote 5 kg', 2590, 5000, '🍚', ''],
-  ['Feijão carioca', 'Mercearia', 'Pacote 1 kg', 849, 1000, '🫘', ''],
-  ['Café tradicional', 'Mercearia', 'Pacote 500 g', 1699, 500, '☕', ''],
-  ['Leite integral', 'Bebidas', 'Caixa 1 L', 479, 1000, '🥛', ''],
-  ['Suco de laranja', 'Bebidas', 'Garrafa 1 L', 1090, 1000, '🍊', ''],
-  ['Sabonete vegetal', 'Higiene', '90 g', 349, 90, '🧼', ''],
-  ['Detergente neutro', 'Limpeza', '500 ml', 249, 500, '🫧', ''],
-  ['Queijo coalho', 'Alimentos Frescos', '300 g', 1590, 300, '🧀', ''],
-];
+export const priceSources: Record<string, string> = {
+  basicos: 'https://mercado.carrefour.com.br/categoria/mercearia/alimentos-basicos',
+  cafe: 'https://mercado.carrefour.com.br/colecao/20384',
+  refrigerantes: 'https://newsitefood.cloud.carrefour.com.br/busca?PS=12&fq=C%3A%2F4599%2F390%2F',
+  refrigerantesLista: 'https://mercado.carrefour.com.br/categoria/bebidas/refrigerantes/',
+  antarctica: 'https://mercado.carrefour.com.br/marca/antarctica',
+  higiene: 'https://mercado.carrefour.com.br/colecao/1860/',
+  higieneEscova: 'https://mercado.carrefour.com.br/colecao/1860/score-desc/0',
+  ypeColecao: 'https://mercado.carrefour.com.br/colecao/20487/score-desc/0?page=2',
+  ype: 'https://mercado.carrefour.com.br/marca/ype',
+  veja: 'https://mercado.carrefour.com.br/marca/veja',
+  hortifrutiKg:
+    'https://mercado.carrefour.com.br/colecao/25532/score-desc/categoria/categoria/mercearia',
+  frescos: 'https://mercado.carrefour.com.br/colecao/28649/score-desc/0',
+};
 export function initialSnapshot(): Snapshot {
-  const markets = [
+  const markets: Market[] = [
     {
       id: 'bom-preco',
       name: 'Mercado Bom Preço',
@@ -68,17 +36,21 @@ export function initialSnapshot(): Snapshot {
       open: true,
       minimum: 2000,
       image: photo('photo-1542838132-92c53300491e'),
+      assemblyMode: 'market',
+      assemblyRevision: 1,
     },
     {
       id: 'sabor-terra',
       name: 'Sabor da Terra',
       neighborhood: 'Cidade Nova',
       distanceKm: 1.1,
-      eta: '30–45 min',
+      eta: '35–50 min',
       rating: 4.8,
       open: true,
       minimum: 1500,
       image: photo('photo-1542838132-92c53300491e'),
+      assemblyMode: 'courier',
+      assemblyRevision: 1,
     },
     {
       id: 'super-parambu',
@@ -90,25 +62,51 @@ export function initialSnapshot(): Snapshot {
       open: false,
       minimum: 2500,
       image: photo('photo-1542838132-92c53300491e'),
+      assemblyMode: 'market',
+      assemblyRevision: 1,
     },
   ];
-  const products: Product[] = markets.flatMap((m, mi) =>
-    productRows.map((r, i) => ({
-      id: `${m.id}-${i + 1}`,
-      marketId: m.id,
-      name: r[0],
-      category: r[1],
-      unit: r[2],
-      price: r[3] + mi * 50,
-      weightGrams: r[4],
-      emoji: r[5],
-      image: r[6] ? photo(r[6]) : '',
-      stock: i === 13 ? 0 : 30,
-      description: `${r[0]} selecionado pelo mercado. ${r[2]}. Confira as informações da embalagem no recebimento. Itens de hortifruti são vendidos em porções de peso fixo nesta demonstração.`,
-    })),
+  const products: Product[] = markets.flatMap((m) =>
+    Object.entries(catalog).flatMap(([key, group]) =>
+      group.products.map((row, index) => {
+        const [name, unit, price, grams, legacyId, sourceKey] = row as [
+          string,
+          string,
+          number,
+          number,
+          number?,
+          string?,
+        ];
+        const source = sourceKey ? priceSources[sourceKey] : undefined;
+        return {
+          id: `${m.id}-${legacyId || `${key}-${index + 1}`}`,
+          marketId: m.id,
+          name,
+          category: group.category as Category,
+          unit,
+          price,
+          weightGrams: grams,
+          emoji: '',
+          image: `atlas:${key}:${index}`,
+          stock: legacyId === 14 ? 0 : 30,
+          description: `${name}. Apresentação: ${unit}. ${key === 'hortifruti' ? 'Porção de peso fixo no protótipo; tamanho e aparência podem variar.' : 'Consulte composição, conservação e alergênicos na embalagem original.'}`,
+          priceReference: {
+            kind:
+              sourceKey === 'hortifrutiKg'
+                ? ('normalized' as const)
+                : source
+                  ? ('retailer' as const)
+                  : ('estimated' as const),
+            source,
+            checkedAt: '2026-11-09',
+          },
+        };
+      }),
+    ),
   );
   return {
     version: 1,
+    catalogVersion: 2,
     onboarded: false,
     city: '',
     markets,
@@ -122,4 +120,20 @@ export function initialSnapshot(): Snapshot {
     substitutions: [],
     recentSearches: [],
   };
+}
+/** Upgrade the demo catalog once, preserving personal data, quantities, stock and historical prices. */
+export function migrateCatalog(snapshot: Snapshot): Snapshot {
+  if ((snapshot.catalogVersion ?? 1) >= 2) return snapshot;
+  const fresh = initialSnapshot();
+  const old = new Map(snapshot.products.map((p) => [p.id, p]));
+  snapshot.products = fresh.products.map((p) => ({ ...p, stock: old.get(p.id)?.stock ?? p.stock }));
+  snapshot.markets = fresh.markets.map((m) => ({
+    ...m,
+    ...snapshot.markets.find((x) => x.id === m.id),
+    assemblyMode: m.assemblyMode,
+    assemblyRevision: 1,
+  }));
+  snapshot.catalogVersion = 2;
+  snapshot.cart.revision++;
+  return snapshot;
 }

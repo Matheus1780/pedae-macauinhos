@@ -1,0 +1,58 @@
+"""Visual and interaction regression for catalog, themes and quick add. Requires running Expo web."""
+import os
+from pathlib import Path
+from playwright.sync_api import sync_playwright, expect
+base=os.environ.get('BASE_URL','http://localhost:19006')
+out=Path(os.environ.get('ARTIFACT_DIR','/tmp/pedeae-v2'));out.mkdir(parents=True,exist_ok=True)
+with sync_playwright() as p:
+ b=p.chromium.launch(executable_path=os.environ.get('CHROMIUM_PATH','/usr/bin/chromium'),headless=True,args=['--no-sandbox'])
+ page=b.new_page(viewport={'width':390,'height':844},device_scale_factor=1,color_scheme='light')
+ errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
+ page.goto(base,wait_until='networkidle',timeout=90000)
+ page.get_by_role('button',name='Pular apresentação').click()
+ page.get_by_role('button',name='Explorar mercados',exact=True).click()
+ expect(page.get_by_test_id('logo-light')).to_be_visible()
+ page.screenshot(path=str(out/'home-light.png'))
+ page.get_by_role('button',name='Ativar tema escuro').click()
+ expect(page.get_by_test_id('logo-dark')).to_be_visible()
+ page.reload(wait_until='networkidle');expect(page.get_by_test_id('logo-dark')).to_be_visible()
+ page.screenshot(path=str(out/'home-dark.png'))
+ page.goto(base+'/profile',wait_until='networkidle')
+ page.get_by_role('radio',name='Tema sistema',exact=True).click()
+ page.goto(base,wait_until='networkidle');expect(page.get_by_test_id('logo-light')).to_be_visible()
+ page.emulate_media(color_scheme='dark');expect(page.get_by_test_id('logo-dark')).to_be_visible()
+ page.get_by_role('button',name='Ver Mercado Bom Preço').click()
+ page.screenshot(path=str(out/'catalog-dark.png'))
+ route=page.url
+ add=page.get_by_role('button',name='Adicionar Arroz branco Tio João Tipo 1',exact=True)
+ add.click();expect(page.get_by_test_id('product-card-bom-preco-7').filter(visible=True).get_by_text('1',exact=True)).to_be_visible()
+ assert page.url==route
+ add.click();expect(page.get_by_test_id('product-card-bom-preco-7').filter(visible=True).get_by_text('2',exact=True)).to_be_visible()
+ page.get_by_role('button',name='Ver Arroz branco Tio João Tipo 1',exact=True).click()
+ expect(page.get_by_text('Detalhes do produto',exact=True)).to_be_visible()
+ page.get_by_role('button',name='Ampliar imagem do produto').click()
+ page.get_by_role('button',name='Fechar imagem',exact=True).click()
+ page.get_by_role('button',name='Voltar',exact=True).click()
+ page.get_by_role('button',name='Ver Minha feira',exact=True).click()
+ expect(page.get_by_text('R$ 62,44',exact=True).filter(visible=True).first).to_be_visible()
+ page.goto(base+'/market/sabor-terra',wait_until='networkidle')
+ page.get_by_role('button',name='Adicionar Arroz branco Tio João Tipo 1',exact=True).click()
+ expect(page.get_by_text('Começar uma feira neste mercado?',exact=True)).to_be_visible()
+ page.get_by_role('button',name='Trocar de mercado',exact=True).click()
+ expect(page.get_by_test_id('product-card-sabor-terra-7').filter(visible=True).get_by_text('1',exact=True)).to_be_visible()
+ page.goto(base+'/market/bom-preco',wait_until='networkidle')
+ # Filter every category and verify all 20 products and local images render without a network dependency.
+ for name in ['Mercearia','Bebidas','Higiene','Limpeza','Hortifruti','Alimentos Frescos']:
+  page.get_by_text(name,exact=True).click()
+  expect(page.get_by_text('20 produtos',exact=True)).to_be_visible()
+  expect(page.locator('[data-testid^="product-card-"]:visible')).to_have_count(20)
+ page.get_by_text('Hortifruti',exact=True).click()
+ page.screenshot(path=str(out/'hortifruti-dark.png'))
+ page.goto(base,wait_until='networkidle');page.get_by_role('button',name='Ativar tema claro').click()
+ page.goto(base+'/market/bom-preco',wait_until='networkidle')
+ page.screenshot(path=str(out/'catalog-light.png'))
+ page.set_viewport_size({'width':1280,'height':900});page.reload(wait_until='networkidle')
+ page.screenshot(path=str(out/'desktop-catalog.png'))
+ assert not errors,errors
+ print('PASS: theme persistence + OS theme + quick add + detail/zoom + market switch + 20/category + mobile/desktop; no browser errors')
+ b.close()

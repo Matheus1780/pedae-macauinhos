@@ -19,6 +19,8 @@ export interface Market {
   open: boolean;
   minimum: Money;
   image: string;
+  assemblyMode: 'market' | 'courier';
+  assemblyRevision: number;
 }
 export interface Product {
   id: string;
@@ -32,6 +34,11 @@ export interface Product {
   emoji: string;
   image: string;
   description: string;
+  priceReference?: {
+    kind: 'retailer' | 'estimated' | 'normalized';
+    source?: string;
+    checkedAt: string;
+  };
 }
 export interface CartItem {
   productId: string;
@@ -70,6 +77,13 @@ export interface SavedCard {
 } // PSP token reference only.
 export type PaymentMethod = 'pix' | 'credit' | 'debit' | 'cash' | 'terminal';
 export type Vehicle = 'moto' | 'carro';
+export interface AssemblyAllocation {
+  by: 'market' | 'courier';
+  rateBps: 150;
+  bonus: Money;
+  fundedBy: 'platform';
+  policyRevision: number;
+}
 export interface Quote {
   id: string;
   revision: number;
@@ -82,6 +96,7 @@ export interface Quote {
   total: Money;
   weightGrams: number;
   expiresAt: number;
+  assembly?: AssemblyAllocation; // Absent only on orders created before this feature.
 }
 export interface OrderItem extends CartItem {
   name: string;
@@ -107,6 +122,11 @@ export interface Order {
   pixCopyPaste?: string;
   cashChangeFor?: Money;
   allowContact: boolean;
+  assembly?: AssemblyAllocation & {
+    state: 'pending' | 'assembling' | 'ready' | 'earned' | 'void';
+    assignedAt: string;
+    reassignedAt?: string;
+  };
 }
 export interface ChatMessage {
   id: string;
@@ -124,6 +144,7 @@ export interface Substitution {
 }
 export interface Snapshot {
   version: 1;
+  catalogVersion?: number;
   onboarded: boolean;
   city: string;
   markets: Market[];
@@ -162,6 +183,8 @@ export type Command =
   | { type: 'demoAdvance'; orderId: string }
   | { type: 'demoPay'; orderId: string }
   | { type: 'demoSubstitution'; orderId: string }
+  | { type: 'demoConfigureAssembly'; marketId: string; by: 'market' | 'courier' }
+  | { type: 'demoDelegateAssembly'; orderId: string }
   | { type: 'resolveSubstitution'; id: string; accept: boolean }
   | { type: 'logout' }
   | { type: 'deleteAccount' };

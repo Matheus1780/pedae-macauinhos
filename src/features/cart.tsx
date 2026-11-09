@@ -13,28 +13,30 @@ import {
   Toggle,
   Empty,
   Banner,
-  s,
+  useUI,
 } from '../ui/components';
-import { colors as c } from '../ui/theme';
 import { totals, money } from '../domain/rules';
 import type { CartItem, Product } from '../domain/types';
 function ItemRow({ item, p, onRemove }: { item: CartItem; p: Product; onRemove: () => void }) {
+  const { c, s } = useUI();
   const a = useApp();
   const x = useRef(new Animated.Value(0)).current;
   const [note, setNote] = useState(item.note);
+  const onRemoveRef = useRef(onRemove);
+  onRemoveRef.current = onRemove;
   const pan = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, g) =>
         Math.abs(g.dx) > 15 && Math.abs(g.dx) > Math.abs(g.dy) * 2,
       onPanResponderMove: (_, g) => x.setValue(Math.min(0, Math.max(-100, g.dx))),
       onPanResponderRelease: (_, g) => {
-        if (g.dx < -75) onRemove();
+        if (g.dx < -75) onRemoveRef.current();
         Animated.spring(x, { toValue: 0, useNativeDriver: true }).start();
       },
     }),
   ).current;
   return (
-    <View style={{ backgroundColor: '#FBE9E7', borderRadius: 16 }}>
+    <View style={{ backgroundColor: c.errorSoft, borderRadius: 16 }}>
       <View style={{ position: 'absolute', right: 20, top: 35 }}>
         <Icon name="trash-outline" color={c.error} />
       </View>
@@ -87,6 +89,7 @@ function ItemRow({ item, p, onRemove }: { item: CartItem; p: Product; onRemove: 
   );
 }
 export function Feira() {
+  const { c, s } = useUI();
   const a = useApp();
   const data = a.data!;
   const [removed, setRemoved] = useState<CartItem | null>(null);

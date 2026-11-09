@@ -1,7 +1,21 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, Pressable, Image, ScrollView, TextInput, Modal } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  View,
+  Text,
+  Pressable,
+  Image,
+  ScrollView,
+  TextInput,
+  Modal,
+  useWindowDimensions,
+  ActivityIndicator,
+  Linking,
+} from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useApp } from '../state/AppProvider';
+import { BrandLogo } from '../ui/BrandLogo';
+import { useTheme } from '../state/ThemeProvider';
+import { feedback } from '../ui/feedback';
 import { categories } from '../data/fixtures';
 import type { Market, Product } from '../domain/types';
 import { normalize, money } from '../domain/rules';
@@ -19,11 +33,11 @@ import {
   Stepper,
   Confirm,
   Banner,
-  s,
+  useUI,
 } from '../ui/components';
 import type { IconName } from '../ui/components';
-import { colors as c } from '../ui/theme';
 export function MarketCard({ market }: { market: Market }) {
+  const { c, s } = useUI();
   return (
     <Pressable
       accessibilityRole="button"
@@ -61,61 +75,178 @@ export function MarketCard({ market }: { market: Market }) {
     </Pressable>
   );
 }
-export function ProductCard({ product }: { product: Product }) {
+export function ProductCard({
+  product,
+  showMarket = false,
+}: {
+  product: Product;
+  showMarket?: boolean;
+}) {
+  const { c, s } = useUI();
+  const a = useApp();
+  const { width } = useWindowDimensions();
+  const columns = width >= 900 ? 4 : width >= 600 ? 3 : 2;
+  const cardWidth = (Math.min(width, 1080) - 40 - 12 * (columns - 1)) / columns;
+  const quantity = a.data!.cart.items.find((i) => i.productId === product.id)?.quantity ?? 0;
+  const market = a.data!.markets.find((m) => m.id === product.marketId);
+  const [pending, setPending] = useState(false),
+    [switching, setSwitching] = useState(false);
+  const lock = useRef(false);
+  const disabled = !product.stock || !market?.open;
+  async function change(delta: number, force = false) {
+    if (lock.current) return;
+    lock.current = true;
+    setPending(true);
+    try {
+      if (delta > 0)
+        await a.send({ type: 'addItem', productId: product.id, quantity: 1, switchMarket: force });
+      else
+        await a.send({
+          type: 'quantity',
+          productId: product.id,
+          quantity: Math.max(0, quantity - 1),
+        });
+      setSwitching(false);
+      feedback('success');
+      if (!quantity || force) a.notify('Adicionado à Minha feira');
+    } catch (e) {
+      if ((e as { code?: string }).code === 'SWITCH_MARKET') setSwitching(true);
+      else a.notify((e as Error).message, true);
+    } finally {
+      lock.current = false;
+      setPending(false);
+    }
+  }
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`Ver ${product.name}`}
-      onPress={() => router.push(`/product/${product.id}`)}
-      style={{ width: '48%', minWidth: 140 }}
-    >
-      <Card style={{ padding: 12, height: 276 }}>
-        <View style={{ alignItems: 'center' }}>
-          <ProductImage uri={product.image} emoji={product.emoji} size={112} />
-        </View>
-        <Text style={[s.label, { height: 42 }]} numberOfLines={2}>
-          {product.name}
-        </Text>
-        <Text style={s.small}>{product.unit}</Text>
-        <View style={[s.row, { justifyContent: 'space-between' }]}>
-          <Text style={{ fontSize: 18, fontWeight: '800', color: c.primary }}>
-            {money(product.price)}
-          </Text>
+    <View style={{ width: cardWidth }} testID={`product-card-${product.id}`}>
+      <Card style={{ padding: 12, gap: 8, height: showMarket ? 326 : 304 }}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Ver ${product.name}`}
+          onPress={() => router.push(`/product/${product.id}`)}
+          style={{ gap: 6, flex: 1 }}
+        >
           <View
             style={{
-              backgroundColor: product.stock ? c.soft : c.line,
-              borderRadius: 12,
-              padding: 8,
+              alignItems: 'center',
+              backgroundColor: c.photo,
+              borderRadius: 10,
+              paddingVertical: 8,
             }}
           >
-            <Icon name={product.stock ? 'add' : 'close'} size={20} />
+            <ProductImage
+              uri={product.image}
+              emoji={product.emoji}
+              size={Math.min(120, cardWidth - 26)}
+            />
           </View>
+          <Text
+            style={[s.label, { fontSize: 14, lineHeight: 20, minHeight: 40 }]}
+            numberOfLines={2}
+          >
+            {product.name}
+          </Text>
+          <Text style={s.small}>{product.unit}</Text>
+          {showMarket && (
+            <Text style={[s.small, { fontSize: 11 }]} numberOfLines={1}>
+              {market?.name}
+            </Text>
+          )}
+        </Pressable>
+        <Text style={[s.label, { fontSize: 18, fontWeight: '700' }]}>{money(product.price)}</Text>
+        <View
+          style={[
+            s.row,
+            {
+              justifyContent: 'space-between',
+              gap: 0,
+              borderWidth: 1,
+              borderColor: c.line,
+              borderRadius: 10,
+              minHeight: 44,
+            },
+          ]}
+        >
+          {quantity > 0 ? (
+            <>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Diminuir ${product.name}`}
+                disabled={pending}
+                onPress={() => void change(-1)}
+                style={{ height: 44, width: 44, alignItems: 'center', justifyContent: 'center' }}
+              >
+                <Icon name={quantity === 1 ? 'trash-outline' : 'remove'} size={19} />
+              </Pressable>
+              <Text style={s.label} accessibilityLiveRegion="polite">
+                {quantity}
+              </Text>
+            </>
+          ) : (
+            <Text style={[s.small, { paddingLeft: 10, flex: 1 }]}>
+              {!product.stock ? 'Esgotado' : !market?.open ? 'Fechado' : 'Adicionar'}
+            </Text>
+          )}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Adicionar ${product.name}`}
+            accessibilityState={{
+              disabled: disabled || pending || quantity >= Math.min(99, product.stock),
+              busy: pending,
+            }}
+            disabled={disabled || pending || quantity >= Math.min(99, product.stock)}
+            onPress={() => void change(1)}
+            style={{
+              height: 44,
+              width: 44,
+              alignItems: 'center',
+              justifyContent: 'center',
+              opacity: disabled ? 0.4 : 1,
+              backgroundColor: c.soft,
+              borderRadius: 9,
+            }}
+          >
+            {pending ? (
+              <ActivityIndicator size="small" color={c.primary} />
+            ) : (
+              <Icon name="add" size={23} />
+            )}
+          </Pressable>
         </View>
-        {!product.stock && <Text style={s.error}>Esgotado</Text>}
       </Card>
-    </Pressable>
+      <Confirm
+        visible={switching}
+        title="Começar uma feira neste mercado?"
+        message={`Sua feira atual será substituída por uma nova em ${market?.name}.`}
+        confirm="Trocar de mercado"
+        onCancel={() => setSwitching(false)}
+        onConfirm={() => void change(1, true)}
+      />
+    </View>
   );
 }
 export function Home() {
-  const a = useApp();
-  const data = a.data!;
+  const { c, s } = useUI();
+  const a = useApp(),
+    data = a.data!;
+  const theme = useTheme();
   const covered = normalize(data.city).includes('parambu');
   const [banner, setBanner] = useState(0);
   const promos = [
     {
-      tag: 'FRESQUINHO, PERTINHO',
-      title: 'Sua feira de hoje.\nO carinho de sempre.',
-      body: 'Escolha o melhor do seu bairro.',
-      icon: 'leaf-outline' as const,
+      title: 'Frescos para a semana',
+      body: 'Frutas e verduras dos mercados perto de você.',
+      category: 'Hortifruti',
+      image: 'atlas:hortifruti:0',
     },
     {
-      tag: 'DO MERCADO ATÉ VOCÊ',
-      title: 'Mais tempo\npara o que importa.',
-      body: 'Monte sua feira em poucos toques.',
-      icon: 'basket-outline' as const,
+      title: 'O básico bem escolhido',
+      body: 'Arroz, feijão e os itens que fazem parte da sua rotina.',
+      category: 'Mercearia',
+      image: 'atlas:mercearia:0',
     },
   ];
-  const p = promos[banner]!;
+  const promo = promos[banner]!;
   return (
     <Screen
       back={false}
@@ -123,128 +254,109 @@ export function Home() {
       fixedTop={
         <>
           <View style={[s.row, { justifyContent: 'space-between' }]}>
-            <View>
-              <Text
-                style={{
-                  fontSize: 30,
-                  color: c.primary,
-                  fontWeight: '800',
-                  letterSpacing: -1,
-                }}
-              >
-                PedeAê<Text style={{ color: c.orange }}> ✦</Text>
-              </Text>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => router.push('/location')}
-                style={[s.row, { paddingVertical: 8 }]}
-              >
-                <Icon name="location" size={14} />
-                <Text style={s.label}>{data.city || 'Escolher localização'}</Text>
-                <Icon name="chevron-down" size={14} />
-              </Pressable>
+            <BrandLogo width={165} />
+            <View style={[s.row, { gap: 0 }]}>
+              <IconButton
+                name={theme.dark ? 'sunny-outline' : 'moon-outline'}
+                label={theme.dark ? 'Ativar tema claro' : 'Ativar tema escuro'}
+                onPress={() =>
+                  void theme
+                    .setPreference(theme.dark ? 'light' : 'dark')
+                    .catch(() => a.notify('Não foi possível salvar o tema.', true))
+                }
+              />
+              <IconButton
+                name="notifications-outline"
+                label="Notificações"
+                onPress={() => router.push('/notifications')}
+              />
             </View>
-            <IconButton
-              name="notifications-outline"
-              label="Notificações"
-              onPress={() => router.push('/notifications')}
-            />
           </View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Alterar localização"
+            onPress={() => router.push('/location')}
+            style={[s.row, { paddingVertical: 10 }]}
+          >
+            <Icon name="location-outline" size={17} />
+            <Text style={s.label}>{data.city || 'Escolher localização'}</Text>
+            <Icon name="chevron-down" size={14} />
+          </Pressable>
           <Pressable
             accessibilityRole="search"
             accessibilityLabel="Buscar produtos ou mercados"
             onPress={() => router.push('/search')}
-            style={[s.input, s.row]}
+            style={[s.input, s.row, { backgroundColor: c.surface }]}
           >
-            <Icon name="search-outline" />
-            <Text style={s.small}>O que você precisa hoje?</Text>
+            <Icon name="search-outline" color={c.muted} />
+            <Text style={s.small}>Busque um produto ou mercado</Text>
           </Pressable>
         </>
       }
     >
-      <View
-        style={{
-          backgroundColor: '#143F2A',
-          borderRadius: 24,
-          padding: 24,
-          gap: 12,
-          overflow: 'hidden',
-        }}
-      >
-        <Text
-          style={{
-            fontSize: 10,
-            letterSpacing: 2,
-            color: c.lime,
-            fontWeight: '800',
-          }}
-        >
-          {p.tag}
-        </Text>
-        <Text style={[s.heroTitle, { color: 'white', maxWidth: 300 }]}>{p.title}</Text>
-        <Text style={{ fontSize: 14, color: '#D9E8DB' }}>{p.body}</Text>
-        <View style={[s.row, { justifyContent: 'space-between' }]}>
-          <Pressable
-            onPress={() => router.push('/markets')}
-            accessibilityRole="button"
-            style={{ backgroundColor: c.lime, padding: 12, borderRadius: 12 }}
-          >
-            <Text style={{ fontWeight: '700', color: '#143F2A' }}>Explorar mercados</Text>
-          </Pressable>
-          <Icon name={p.icon} size={56} color={c.lime} />
+      <Card style={{ backgroundColor: c.soft, borderWidth: 0, padding: 20 }}>
+        <View style={[s.row, { gap: 12 }]}>
+          <View style={[s.flex, { gap: 8 }]}>
+            <Text style={[s.sectionTitle, { fontSize: 24, lineHeight: 29 }]}>{promo.title}</Text>
+            <Text style={s.small}>{promo.body}</Text>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() =>
+                router.push({ pathname: '/search', params: { category: promo.category } })
+              }
+              style={{ paddingVertical: 10 }}
+            >
+              <Text style={s.link}>Ver produtos →</Text>
+            </Pressable>
+          </View>
+          <ProductImage uri={promo.image} emoji="" size={102} />
         </View>
-        <View style={s.row}>
+        <View style={[s.row, { justifyContent: 'center', gap: 4 }]}>
           {promos.map((_, i) => (
             <Pressable
               key={i}
+              accessibilityRole="button"
               accessibilityLabel={`Banner ${i + 1}`}
+              accessibilityState={{ selected: banner === i }}
               onPress={() => setBanner(i)}
               style={{ padding: 10 }}
             >
               <View
                 style={{
-                  height: 5,
-                  width: banner === i ? 24 : 8,
-                  backgroundColor: banner === i ? c.lime : '#6D937D',
+                  width: banner === i ? 20 : 6,
+                  height: 4,
                   borderRadius: 3,
+                  backgroundColor: banner === i ? c.primary : c.line,
                 }}
               />
             </Pressable>
           ))}
         </View>
-      </View>
+      </Card>
       <View>
-        <Heading title="O que vai na sua feira?" />
+        <Heading title="Categorias" />
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
           {categories.map((cat) => (
             <Pressable
               key={cat.name}
               accessibilityRole="button"
-              onPress={() =>
-                router.push({
-                  pathname: '/search',
-                  params: { category: cat.name },
-                })
-              }
+              accessibilityLabel={cat.name}
+              onPress={() => router.push({ pathname: '/search', params: { category: cat.name } })}
               style={{
                 width: '30%',
                 flexGrow: 1,
                 alignItems: 'center',
                 gap: 8,
-                padding: 12,
-                borderRadius: 16,
-                backgroundColor: cat.color,
+                paddingVertical: 16,
+                paddingHorizontal: 4,
+                borderRadius: 12,
+                backgroundColor: c.surface,
+                borderWidth: 1,
+                borderColor: c.line,
               }}
             >
-              <Icon name={cat.icon as IconName} size={28} />
-              <Text
-                style={{
-                  fontSize: 11,
-                  fontWeight: '600',
-                  color: c.ink,
-                  textAlign: 'center',
-                }}
-              >
+              <Icon name={cat.icon as IconName} size={27} />
+              <Text style={[s.small, { textAlign: 'center', color: c.ink, fontWeight: '500' }]}>
                 {cat.name}
               </Text>
             </Pressable>
@@ -253,13 +365,12 @@ export function Home() {
       </View>
       <View>
         <Heading
-          title="Mercados pertinho"
-          subtitle="Seu comércio local, na palma da mão."
+          title="Mercados próximos"
           action="Ver todos"
           onAction={() => router.push('/markets')}
         />
         {covered ? (
-          <View style={{ gap: 12 }}>
+          <View style={{ gap: 10 }}>
             {data.markets.slice(0, 2).map((m) => (
               <MarketCard key={m.id} market={m} />
             ))}
@@ -267,25 +378,38 @@ export function Home() {
         ) : (
           <Empty
             title="Ainda não chegamos por aqui"
-            description="Escolha Parambu, CE para explorar o catálogo demonstrativo."
+            description="Escolha Parambu, CE para explorar a demonstração."
             action="Alterar cidade"
             onAction={() => router.push('/location')}
           />
         )}
       </View>
-      <Card style={{ backgroundColor: c.soft }}>
-        <View style={s.row}>
-          <Icon name="shield-checkmark-outline" size={30} />
-          <View style={s.flex}>
-            <Text style={s.label}>Cuidado do início ao fim</Text>
-            <Text style={s.small}>Custos claros e cada etapa da entrega acompanhada.</Text>
+      {covered && (
+        <View>
+          <Heading
+            title="Para sua próxima feira"
+            subtitle="Seleção do Mercado Bom Preço"
+            action="Ver catálogo"
+            onAction={() => router.push('/market/bom-preco')}
+          />
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
+            {['bom-preco-7', 'bom-preco-8', 'bom-preco-1', 'bom-preco-10']
+              .map((id) => data.products.find((p) => p.id === id))
+              .filter((p): p is Product => !!p)
+              .map((p) => (
+                <ProductCard key={p.id} product={p} />
+              ))}
           </View>
         </View>
-      </Card>
+      )}
+      <Text style={[s.small, { textAlign: 'center' }]}>
+        Seu mercado local. Sua feira do seu jeito.
+      </Text>
     </Screen>
   );
 }
 export function Markets() {
+  const { c, s } = useUI();
   const { data } = useApp();
   const [sort, setSort] = useState('Próximos');
   const list = [...data!.markets]
@@ -305,14 +429,14 @@ export function Markets() {
             style={{
               padding: 13,
               borderRadius: 24,
-              backgroundColor: sort === label ? c.primary : 'white',
+              backgroundColor: sort === label ? c.primary : c.surface,
               borderWidth: 1,
               borderColor: c.line,
             }}
           >
             <Text
               style={{
-                color: sort === label ? 'white' : c.ink,
+                color: sort === label ? c.onPrimary : c.ink,
                 fontWeight: '600',
               }}
             >
@@ -335,10 +459,13 @@ export function Markets() {
   );
 }
 export function Search() {
+  const { c, s } = useUI();
   const a = useApp();
   const { category } = useLocalSearchParams<{ category?: string }>();
   const [query, setQuery] = useState(''),
     [debounced, setDebounced] = useState('');
+  const [limit, setLimit] = useState(24);
+  useEffect(() => setLimit(24), [debounced, category]);
   useEffect(() => {
     const t = setTimeout(() => setDebounced(query), 300);
     return () => clearTimeout(t);
@@ -357,7 +484,7 @@ export function Search() {
         placeholder="Arroz, banana, mercado..."
         value={query}
         onChangeText={setQuery}
-        autoFocus
+        autoFocus={!category}
         returnKeyType="search"
         onSubmitEditing={() => remember(query)}
       />
@@ -409,12 +536,12 @@ export function Search() {
           {!category && markets.map((m) => <MarketCard key={m.id} market={m} />)}
           <Heading
             title="Produtos"
-            subtitle="Cada produto pertence ao mercado indicado no detalhe."
+            subtitle="O mercado aparece em cada produto. Sua feira reúne itens de um mercado."
           />
           {matched.length ? (
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
-              {matched.map((p) => (
-                <ProductCard key={p.id} product={p} />
+              {matched.slice(0, limit).map((p) => (
+                <ProductCard key={p.id} product={p} showMarket />
               ))}
             </View>
           ) : (
@@ -424,16 +551,27 @@ export function Search() {
               description="Tente outro nome ou uma categoria diferente."
             />
           )}
+          {matched.length > limit && (
+            <Button
+              secondary
+              label="Mostrar mais resultados"
+              onPress={() => setLimit((n) => n + 24)}
+            />
+          )}
         </>
       )}
     </Screen>
   );
 }
 export function Catalog() {
+  const { c, s } = useUI();
   const a = useApp();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [category, setCategory] = useState('Todos'),
     [query, setQuery] = useState('');
+  const [limit, setLimit] = useState(24);
+  const [assemblyDemo, setAssemblyDemo] = useState(false);
+  useEffect(() => setLimit(24), [id, category, query]);
   const market = a.data!.markets.find((m) => m.id === id);
   if (!market)
     return (
@@ -508,7 +646,7 @@ export function Catalog() {
             <Text
               style={{
                 fontWeight: '600',
-                color: cat === category ? 'white' : c.primary,
+                color: cat === category ? c.onPrimary : c.primary,
               }}
             >
               {cat}
@@ -516,9 +654,15 @@ export function Catalog() {
           </Pressable>
         ))}
       </ScrollView>
+      <View style={[s.row, { justifyContent: 'space-between' }]}>
+        <Text style={s.small}>{list.length} produtos</Text>
+        <Text style={s.small}>
+          {market.assemblyMode === 'market' ? 'Montagem pelo mercado' : 'Montagem pelo entregador'}
+        </Text>
+      </View>
       {list.length ? (
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
-          {list.map((p) => (
+          {list.slice(0, limit).map((p) => (
             <ProductCard key={p.id} product={p} />
           ))}
         </View>
@@ -528,10 +672,50 @@ export function Catalog() {
           description="Experimente outra categoria ou busca."
         />
       )}
+      {list.length > limit && (
+        <Button
+          secondary
+          label={`Mostrar mais produtos (${list.length - limit})`}
+          onPress={() => setLimit((n) => n + 24)}
+        />
+      )}
+      {a.demo && (
+        <Card>
+          <Pressable accessibilityRole="button" onPress={() => setAssemblyDemo(!assemblyDemo)}>
+            <Text style={s.link}>Testar cenários de montagem {assemblyDemo ? '−' : '+'}</Text>
+          </Pressable>
+          {assemblyDemo && (
+            <>
+              <Text style={s.small}>
+                Controle de demonstração. No serviço real, esta escolha pertence ao mercado.
+              </Text>
+              <Button
+                secondary
+                label={
+                  market.assemblyMode === 'market'
+                    ? 'Simular: entregador monta'
+                    : 'Simular: mercado monta'
+                }
+                onPress={() =>
+                  void a
+                    .send({
+                      type: 'demoConfigureAssembly',
+                      marketId: market.id,
+                      by: market.assemblyMode === 'market' ? 'courier' : 'market',
+                    })
+                    .then(() => a.notify('Responsável pela montagem atualizado'))
+                    .catch((e) => a.notify(e.message, true))
+                }
+              />
+            </>
+          )}
+        </Card>
+      )}
     </Screen>
   );
 }
 export function ProductDetail() {
+  const { c, s } = useUI();
   const a = useApp();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [quantity, setQuantity] = useState(1),
@@ -549,6 +733,8 @@ export function ProductDetail() {
       </Screen>
     );
   const market = a.data!.markets.find((x) => x.id === p.marketId)!;
+  const alreadyAdded = a.data!.cart.items.find((i) => i.productId === p.id)?.quantity ?? 0;
+  const remaining = Math.max(0, Math.min(99 - alreadyAdded, p.stock - alreadyAdded));
   async function add(force = false) {
     try {
       await a.send({
@@ -575,7 +761,7 @@ export function ProductDetail() {
           icon="basket-outline"
           onPress={() => void add()}
           loading={a.busy}
-          disabled={!p.stock || !market.open}
+          disabled={!remaining || !market.open}
         />
       }
     >
@@ -585,7 +771,7 @@ export function ProductDetail() {
         onPress={() => setZoom(true)}
         style={{
           alignItems: 'center',
-          backgroundColor: 'white',
+          backgroundColor: c.surface,
           padding: 20,
           borderRadius: 24,
         }}
@@ -601,13 +787,37 @@ export function ProductDetail() {
       <Text style={{ fontSize: 28, fontWeight: '800', color: c.primary }}>{money(p.price)}</Text>
       <Text style={s.small}>{p.unit}</Text>
       <Text style={s.body}>{p.description}</Text>
+      {a.demo && (
+        <Card>
+          <Text style={s.small}>
+            Imagem ilustrativa gerada por IA. A embalagem recebida pode variar.
+          </Text>
+          <Text style={s.small}>
+            {p.priceReference?.kind === 'estimated'
+              ? 'Preço estimado para demonstração.'
+              : 'Preço de referência pesquisado em 09/11/2026; pode variar conforme a loja e a região.'}
+          </Text>
+          {p.priceReference?.source && (
+            <Pressable
+              accessibilityRole="link"
+              onPress={() =>
+                void Linking.openURL(p.priceReference!.source!).catch(() =>
+                  a.notify('Não foi possível abrir a referência.', true),
+                )
+              }
+            >
+              <Text style={s.link}>Consultar referência de preço</Text>
+            </Pressable>
+          )}
+        </Card>
+      )}
       <Card>
         <View style={[s.row, { justifyContent: 'space-between' }]}>
           <View>
             <Text style={s.label}>Quantidade</Text>
-            <Text style={s.small}>Máximo disponível: {p.stock}</Text>
+            <Text style={s.small}>Você pode adicionar mais {remaining}</Text>
           </View>
-          <Stepper value={quantity} onChange={setQuantity} min={1} max={Math.min(99, p.stock)} />
+          <Stepper value={quantity} onChange={setQuantity} min={1} max={remaining} />
         </View>
       </Card>
       <Field
@@ -631,7 +841,7 @@ export function ProductDetail() {
         <View
           style={{
             flex: 1,
-            backgroundColor: 'white',
+            backgroundColor: c.surface,
             padding: 24,
             paddingTop: 60,
           }}

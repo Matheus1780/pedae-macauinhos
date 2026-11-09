@@ -45,3 +45,13 @@ Um teste do modo demo não certifica nenhum desses serviços. Os controles demon
 A consulta `npm audit` em 09/11/2026 apontou 18 ocorrências na árvore atual: 5 altas, 12 moderadas e 1 baixa, incluindo dependências transitivas do Expo/Metro/Router. Entre as causas estão `decode-uri-component`, `image-size` e `postcss`. Uma ocorrência na árvore não comprova exploração pelo app, mas os alertas não devem ser ignorados ao preparar a operação real.
 
 As versões corrigidas consultadas têm mudanças de contrato (por exemplo, CommonJS para ESM no decodificador) ou estão fora das faixas fixadas pelo SDK. Não foi aplicado `npm audit fix --force`, que propõe inclusive trocar a versão principal do Expo. A atualização coordenada do SDK e a revisão dessas ocorrências permanecem pendentes antes de distribuir o produto em produção. Os testes funcionais e o CI aprovado não equivalem a uma certificação de segurança.
+
+## Atualização 1.1 — 09/11/2026
+
+- TypeScript estrito e **33 testes** passaram: 24 testes anteriores atualizados para os novos preços e 9 cenários de catálogo, bônus e migração.
+- `tests/e2e_flow.py`: jornada completa no Chromium a 390 × 844, incluindo adição rápida, detalhe, OTP local, endereço, checkout, bônus R$ 0,47 sobre R$ 31,22 em produtos, delegação ao entregador, PIX, entrega, persistência e repetição. Sem erros JavaScript de página.
+- `tests/e2e_catalog.py`: claro/escuro/sistema, persistência do tema, mudança de aparência do sistema, + sem navegação, quantidade, detalhe/ampliação, confirmação de troca de mercado, 20 produtos por categoria e visual em 390 × 844 e 1280 × 900. Sem erros JavaScript de página.
+- As duas migrações SQL passaram pela análise sintática do PostgreSQL via pglast. Isso não equivale a executar a migração contra um banco real.
+- Imagens dos 120 produtos inspecionadas por conjunto; corrigida a célula de sabão em barra na categoria Limpeza. As duas variantes de logo foram verificadas na interface.
+- Dispositivos físicos, provedores de pagamento, banco externo e repasses reais continuam fora desta validação.
+- Exportação JavaScript de **web, Android e iOS** concluída com `expo export --platform all`. Isso valida empacotamento e recursos; não substitui um teste em celular nem gera APK/IPA assinados.
