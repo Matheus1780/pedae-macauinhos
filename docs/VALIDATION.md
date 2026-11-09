@@ -4,6 +4,8 @@ Execução em 06/11/2026: TypeScript sem erros; **24 testes aprovados**; jornada
 
 ## Verificação automatizada
 
+Em 09/11/2026, o comando de testes foi ajustado para funcionar em Node 22 e 24 sem a opção exclusiva do Node 24 `--test-isolation=none`. A automação valida agora ambas as versões. O comando executa o arquivo com `node:test` e o loader TypeScript; falhas dos testes continuam retornando exit code diferente de zero.
+
 `npm run check` executa TypeScript em modo strict e testes de domínio/adaptador. Os cenários incluem:
 
 - soma em centavos, subtotal de exemplo, quantidade inválida e limite de estoque;
@@ -37,3 +39,9 @@ Validações ainda necessárias, pois dependem de dispositivo/serviço real:
 - Política comercial de taxas/mínimo/substituição/cancelamento e termos de privacidade.
 
 Um teste do modo demo não certifica nenhum desses serviços. Os controles demonstrativos precisam permanecer indisponíveis no backend de produção.
+
+## Dependências antes da produção
+
+A consulta `npm audit` em 09/11/2026 apontou 18 ocorrências na árvore atual: 5 altas, 12 moderadas e 1 baixa, incluindo dependências transitivas do Expo/Metro/Router. Entre as causas estão `decode-uri-component`, `image-size` e `postcss`. Uma ocorrência na árvore não comprova exploração pelo app, mas os alertas não devem ser ignorados ao preparar a operação real.
+
+As versões corrigidas consultadas têm mudanças de contrato (por exemplo, CommonJS para ESM no decodificador) ou estão fora das faixas fixadas pelo SDK. Não foi aplicado `npm audit fix --force`, que propõe inclusive trocar a versão principal do Expo. A atualização coordenada do SDK e a revisão dessas ocorrências permanecem pendentes antes de distribuir o produto em produção. Os testes funcionais e o CI aprovado não equivalem a uma certificação de segurança.

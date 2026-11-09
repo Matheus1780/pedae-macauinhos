@@ -8,11 +8,14 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [22, 24]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: ${{ matrix.node-version }}
           cache: npm
       - run: npm ci
       - run: npm run check
@@ -21,6 +24,6 @@ jobs:
           EXPO_NO_TELEMETRY: '1'
       - uses: actions/upload-artifact@v4
         with:
-          name: pedeae-web-preview
+          name: pedeae-web-preview-node-${{ matrix.node-version }}
           path: dist
           retention-days: 7
