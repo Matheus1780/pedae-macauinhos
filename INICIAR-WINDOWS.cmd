@@ -1,4 +1,5 @@
 @echo off
+setlocal DisableDelayedExpansion
 chcp 65001 >nul
 cd /d "%~dp0"
 where node >nul 2>nul
@@ -13,13 +14,5 @@ if errorlevel 1 (
   pause
   exit /b 1
 )
-echo Preparando o PedeAe. Aguarde a instalacao dos componentes...
-call npm.cmd ci
-if errorlevel 1 (
-  echo A instalacao nao terminou. Confira a conexao e as mensagens acima.
-  pause
-  exit /b 1
-)
-echo Abrindo o app no navegador. Mantenha esta janela aberta.
-call npm.cmd run web
-pause
+node "%~dp0scripts\start-local.cjs"
+if errorlevel 1 pause

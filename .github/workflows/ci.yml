@@ -27,3 +27,25 @@ jobs:
           name: pedeae-web-preview-node-${{ matrix.node-version }}
           path: dist
           retention-days: 7
+  windows-shortcut:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: node --check scripts/start-local.cjs
+      - name: Create and inspect the Windows desktop shortcut
+        shell: pwsh
+        run: |
+          $desktop = [Environment]::GetFolderPath('DesktopDirectory')
+          New-Item -ItemType Directory -Path $desktop -Force | Out-Null
+          & .\CRIAR-ATALHO-WINDOWS.cmd /quiet
+          if ($LASTEXITCODE -ne 0) { throw 'Shortcut creation failed' }
+          $shell = New-Object -ComObject WScript.Shell
+          $file = Join-Path $desktop 'PedeAe (teste).lnk'
+          $shortcut = $shell.CreateShortcut($file)
+          $expected = Join-Path $PWD.Path 'INICIAR-WINDOWS.cmd'
+          if ($shortcut.TargetPath -ne $expected) { throw 'Incorrect shortcut target' }
+          if ($shortcut.WorkingDirectory.TrimEnd('\') -ne $PWD.Path.TrimEnd('\')) { throw 'Incorrect working directory' }
+          Remove-Item $file

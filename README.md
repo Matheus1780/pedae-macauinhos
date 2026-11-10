@@ -21,7 +21,9 @@ npm run android
 npm run ios
 ```
 
-**No Windows:** depois de extrair o projeto, dê dois cliques em `INICIAR-WINDOWS.cmd`. Ele instala os componentes e abre o app no navegador. Mantenha a janela aberta enquanto estiver usando o app.
+**No Windows:** depois de extrair o projeto, dê dois cliques em `CRIAR-ATALHO-WINDOWS.cmd` **uma única vez**. Nas próximas vezes, abra **PedeAe (teste)** pela Área de Trabalho. Mantenha a pasta do projeto no mesmo local. Você também pode abrir diretamente por `INICIAR-WINDOWS.cmd`.
+
+O iniciador instala os componentes na primeira abertura e reutiliza a instalação nas seguintes. Ele reinstala se os arquivos de dependências, a versão do Node ou a instalação mudarem. Você pode minimizar a janela de comandos enquanto usa o app. Fechar essa janela encerra o servidor local. O VS Code não precisa estar aberto.
 
 Não é necessário configurar conta de banco, API ou pagamentos para testar. O padrão é `demo`. Copie `.env.example` para `.env` apenas quando quiser configurar o adaptador HTTP.
 
