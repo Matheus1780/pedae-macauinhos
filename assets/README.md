@@ -9,3 +9,10 @@ As imagens foram geradas com a ferramenta de geração de imagens desta sessão 
 Direção visual usada: fotografias realistas de produtos de supermercado brasileiro, fundo branco, iluminação de estúdio suave, embalagens reconhecíveis e conteúdo totalmente dentro de cada célula. Os nomes e tamanhos usados no pedido de geração correspondem ao cadastro no JSON. Hortifruti utiliza fotos ilustrativas dos alimentos sem marca. As imagens não substituem dados oficiais de embalagem, ingredientes, certificações ou alergênicos.
 
 As marcas identificam os produtos ilustrados; não indicam parceria, fornecimento ou afiliação com PedeAê. Para operar lojas reais, substituir pelos arquivos oficiais autorizados do catálogo de cada mercado.
+
+# Ícone de instalação
+
+`brand/app-icon.png` e `../public/icons/` foram preparados a partir de uma imagem
+gerada por IA com a marca de referência: o P verde, a sacola e a casa. Os tamanhos
+PNG foram adaptados às exigências do manifesto web e Expo. O logo claro/escuro
+dentro do aplicativo permanece em `brand/logo-themes.png`.

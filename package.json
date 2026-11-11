@@ -1,6 +1,6 @@
 {
   "name": "pedeae-cliente",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "private": true,
   "main": "expo-router/entry",
   "engines": {
@@ -13,7 +13,7 @@
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
     "test": "node --import tsx tests/domain.test.ts",
-    "export:web": "expo export --platform web",
+    "export:web": "expo export --platform web && node scripts/prepare-pwa.cjs",
     "check": "npm run typecheck && npm test",
     "format": "prettier --write app src tests docs README.md package.json app.json tsconfig.json"
   },

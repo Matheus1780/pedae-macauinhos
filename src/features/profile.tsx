@@ -5,6 +5,7 @@ import { useApp } from '../state/AppProvider';
 import { Screen, Card, Icon, Button, Field, Banner, Empty, Confirm, useUI } from '../ui/components';
 import type { IconName } from '../ui/components';
 import { ThemeControl } from '../ui/ThemeControl';
+import { InstallApp } from '../ui/InstallApp';
 export function Profile() {
   const { c, s } = useUI();
   const a = useApp();
@@ -81,6 +82,7 @@ export function Profile() {
       </View>
       {!profile && <Button label="Entrar ou criar conta" onPress={() => router.push('/login')} />}
       <ThemeControl />
+      <InstallApp />
       <Card style={{ padding: 0 }}>
         {links.map((link, i) => (
           <Pressable
@@ -107,7 +109,7 @@ export function Profile() {
       </Card>
       {profile && <Button label="Sair da conta" secondary onPress={() => setLogout(true)} />}
       <Text style={[s.small, { textAlign: 'center', padding: 16 }]}>
-        PedeAê · Cliente v1.1.0{a.demo ? '\nAmbiente de demonstração' : ''}
+        PedeAê · Cliente v1.2.0{a.demo ? '\nAmbiente de demonstração' : ''}
       </Text>
       <Confirm
         visible={logout}

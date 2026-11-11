@@ -5,11 +5,14 @@ import { StatusBar } from 'expo-status-bar';
 import { AppProvider } from '../src/state/AppProvider';
 import { LoadGate } from '../src/ui/components';
 import { ThemeProvider, useTheme } from '../src/state/ThemeProvider';
+import { PwaProvider } from '../src/state/PwaProvider';
 export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <ThemeProvider>
-        <AppContent />
+        <PwaProvider>
+          <AppContent />
+        </PwaProvider>
       </ThemeProvider>
     </SafeAreaProvider>
   );

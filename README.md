@@ -10,6 +10,10 @@ Logo adaptada ao claro/escuro, adição direta pelo **+**, **120 produtos difere
 
 ## Executar
 
+**Instalação sem terminal:** a versão web agora tem suporte a PWA para computador,
+Android e iPhone/iPad, quando publicada em HTTPS. Veja o [guia de instalação](docs/INSTALAR.md).
+O aplicativo pode ser aberto por um ícone. O ZIP é o código-fonte; o Drive não executa o app.
+
 Requisitos: Node.js 22.13+ e npm. Use a versão do Expo Go compatível com SDK 54 ou um development build. iOS local requer macOS/Xcode; Android local requer Android Studio.
 
 ```sh

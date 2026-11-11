@@ -55,3 +55,19 @@ As versões corrigidas consultadas têm mudanças de contrato (por exemplo, Comm
 - Imagens dos 120 produtos inspecionadas por conjunto; corrigida a célula de sabão em barra na categoria Limpeza. As duas variantes de logo foram verificadas na interface.
 - Dispositivos físicos, provedores de pagamento, banco externo e repasses reais continuam fora desta validação.
 - Exportação JavaScript de **web, Android e iOS** concluída com `expo export --platform all`. Isso valida empacotamento e recursos; não substitui um teste em celular nem gera APK/IPA assinados.
+
+# Instalação PWA — versão 1.2
+
+- `npm run check`: TypeScript e 33 testes passaram.
+- `npm run export:web`: exportação com manifesto, ícones e service worker passou.
+- `python tests/e2e_pwa.py`: Chromium em perfil temporário normal, sem erros de
+  elegibilidade de instalação; tamanhos dos ícones e idioma verificados.
+- Interações aceitar/dispensar instalação verificadas com eventos simulados; não
+  representam uma instalação real no sistema operacional.
+- Abertura offline, aviso e recuperação online passaram. Cache Storage contém
+  somente `offline.html`; nenhum dado de API/cliente entra nesse cache.
+- Instruções de iPhone verificadas em Chromium com identificação de iPhone;
+  teste físico em Safari/iOS e Android permanece pendente.
+- Exportações JavaScript/Hermes para Android e iOS passaram. Não foram gerados
+  APK/AAB/IPA assinados nem submetidos às lojas.
+- Publicação HTTPS depende da autorização da conta de hospedagem.
