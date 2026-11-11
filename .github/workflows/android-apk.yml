@@ -1,0 +1,113 @@
+name: Build Android demo APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/android-apk.yml'
+      - 'app.config.js'
+
+permissions:
+  contents: read
+
+jobs:
+  apk:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    env:
+      EXPO_NO_TELEMETRY: '1'
+      EXPO_PUBLIC_DATA_MODE: demo
+      PEDEAE_DEMO_APK: '1'
+      PEDEAE_ANDROID_VERSION_CODE: ${{ github.run_number }}
+      CI: '1'
+      GRADLE_OPTS: '-Dorg.gradle.daemon=false -Dorg.gradle.workers.max=2'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - run: npm ci
+      - run: npm run check
+      - name: Generate native Android project
+        run: npx expo prebuild --platform android --no-install
+      - name: Build standalone demo APK
+        working-directory: android
+        run: ./gradlew :app:assembleRelease --no-daemon --max-workers=2 -PreactNativeArchitectures=arm64-v8a,armeabi-v7a,x86_64
+      - name: Verify signature and embedded app
+        run: |
+          mkdir -p apk-output
+          cp android/app/build/outputs/apk/release/app-release.apk apk-output/PedeAe-Android-teste.apk
+          build_tools=$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)
+          "$build_tools/apksigner" verify --verbose --print-certs apk-output/PedeAe-Android-teste.apk > apk-output/assinatura.txt
+          "$build_tools/aapt" dump badging apk-output/PedeAe-Android-teste.apk > apk-output/android-info.txt
+          python - <<'PY'
+          import zipfile
+          from pathlib import Path
+          apk = Path('apk-output/PedeAe-Android-teste.apk')
+          with zipfile.ZipFile(apk) as z:
+              names = z.namelist()
+              assert 'assets/index.android.bundle' in names, 'Standalone JS bundle missing'
+              for abi in ['arm64-v8a', 'armeabi-v7a', 'x86_64']:
+                  assert any(n.startswith('lib/' + abi + '/') for n in names), abi
+          info = Path('apk-output/android-info.txt').read_text()
+          assert "name='com.pedeae.cliente.demo'" in info
+          assert 'application-debuggable' not in info
+          PY
+          cd apk-output
+          sha256sum PedeAe-Android-teste.apk > SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PedeAe-Android-APK
+          path: apk-output/
+          retention-days: 30
+          if-no-files-found: error
+          compression-level: 0
+  smoke-test:
+    needs: apk
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: PedeAe-Android-APK
+          path: apk-output
+      - name: Enable emulator acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Install and open standalone APK
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
+        with:
+          api-level: 29
+          arch: x86_64
+          target: default
+          disable-animations: true
+          script: |
+            adb install apk-output/PedeAe-Android-teste.apk
+            adb reverse --remove-all
+            adb logcat -c
+            adb shell am start -W -n com.pedeae.cliente.demo/.MainActivity
+            sleep 15
+            adb shell pidof com.pedeae.cliente.demo
+            adb shell uiautomator dump /sdcard/window.xml
+            adb pull /sdcard/window.xml apk-output/window.xml
+            adb exec-out screencap -p > apk-output/android-screen.png
+            adb logcat -d > apk-output/android-log.txt
+            python -c "from pathlib import Path; s=Path('apk-output/window.xml').read_text(); assert 'Pular apresentação' in s, 'Onboarding did not render'"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: PedeAe-Android-verificacao
+          path: |
+            apk-output/android-screen.png
+            apk-output/android-log.txt
+            apk-output/window.xml
+          if-no-files-found: ignore
+          retention-days: 14
