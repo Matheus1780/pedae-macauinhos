@@ -71,3 +71,12 @@ As versões corrigidas consultadas têm mudanças de contrato (por exemplo, Comm
 - Exportações JavaScript/Hermes para Android e iOS passaram. Não foram gerados
   APK/AAB/IPA assinados nem submetidos às lojas.
 - Publicação HTTPS depende da autorização da conta de hospedagem.
+
+## Versão 1.3 — 12/11/2026
+
+- `npm run check`: TypeScript e 36 testes aprovados.
+- `npm run export:web`: exportação e preparação PWA aprovadas.
+- `tests/e2e_catalog.py`: tema persistido/sistema, + direto, detalhes/zoom, troca de mercado, 20 itens por categoria e desktop aprovados.
+- `tests/e2e_flow.py`: onboarding até checkout PIX, entrega, persistência e repetição aprovados, sem erros JS.
+- `tests/e2e_favorites.py`: favoritos persistidos após recarregar/removidos, filtros combinados, busca fixa, subtotal e observações aprovados; capturas em 320/390/1280 px, claro/escuro.
+- Contrato SQL de favoritos preparado para o futuro backend; nenhuma migração aplicada a banco remoto.

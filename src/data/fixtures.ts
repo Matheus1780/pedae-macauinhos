@@ -119,10 +119,12 @@ export function initialSnapshot(): Snapshot {
     messages: [],
     substitutions: [],
     recentSearches: [],
+    favoriteProductIds: [],
   };
 }
 /** Upgrade the demo catalog once, preserving personal data, quantities, stock and historical prices. */
 export function migrateCatalog(snapshot: Snapshot): Snapshot {
+  snapshot.favoriteProductIds ??= [];
   if ((snapshot.catalogVersion ?? 1) >= 2) return snapshot;
   const fresh = initialSnapshot();
   const old = new Map(snapshot.products.map((p) => [p.id, p]));

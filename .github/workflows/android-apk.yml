@@ -7,6 +7,10 @@ on:
     paths:
       - '.github/workflows/android-apk.yml'
       - 'app.config.js'
+      - 'app.json'
+      - 'app/**'
+      - 'src/**'
+      - 'assets/**'
       - 'package.json'
       - 'package-lock.json'
 

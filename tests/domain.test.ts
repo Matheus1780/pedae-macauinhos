@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { DemoRepository } from '../src/data/demoRepository';
 import { ApiRepository } from '../src/data/apiRepository';
 import { initialSnapshot, migrateCatalog, categories } from '../src/data/fixtures';
+import { selectProducts } from '../src/domain/catalog';
 import { assemblyBonus, quoteCart, totals, money } from '../src/domain/rules';
 import type { Address, CheckoutInput } from '../src/domain/types';
 const address: Address = {
@@ -583,4 +584,65 @@ test('catalog migration retains historical order money, stock and the existing c
   assert.equal(upgraded.cart.items[0]!.note, 'Menos madura');
   assert.equal(upgraded.products.find((p) => p.id === 'bom-preco-7')!.stock, 29);
   assert.deepEqual(migrateCatalog(upgraded), upgraded);
+});
+
+test('favorites survive restart and login, are idempotent and clear on logout', async () => {
+  const { repo, storage } = setup();
+  await repo.dispatch({ type: 'addItem', productId: 'bom-preco-7', quantity: 1 });
+  await repo.dispatch({ type: 'setFavorite', productId: 'bom-preco-7', value: true });
+  await repo.dispatch({ type: 'setFavorite', productId: 'bom-preco-7', value: true });
+  const restarted = new DemoRepository(storage);
+  assert.deepEqual((await restarted.load()).favoriteProductIds, ['bom-preco-7']);
+  const ch = await restarted.requestOtp('88999990000', 'sms');
+  const logged = await restarted.verifyOtp(ch.id, '123456', 'Cliente Teste');
+  assert.deepEqual(logged.favoriteProductIds, ['bom-preco-7']);
+  assert.equal(logged.cart.items[0]!.quantity, 1);
+  await assert.rejects(
+    restarted.dispatch({ type: 'setFavorite', productId: 'missing', value: true }),
+    { code: 'PRODUCT' },
+  );
+  assert.deepEqual((await restarted.dispatch({ type: 'logout' })).favoriteProductIds, []);
+});
+test('older stored snapshots gain favorites without losing their cart', async () => {
+  const { repo, values, storage } = setup();
+  await repo.dispatch({ type: 'addItem', productId: 'bom-preco-7', quantity: 2 });
+  const raw = JSON.parse(values.get('pedeae.demo.v1')!);
+  delete raw.snapshot.favoriteProductIds;
+  values.set('pedeae.demo.v1', JSON.stringify(raw));
+  const updated = await new DemoRepository(storage).load();
+  assert.deepEqual(updated.favoriteProductIds, []);
+  assert.equal(updated.cart.items[0]!.quantity, 2);
+});
+
+test('catalog filters combine and price sorting does not mutate the catalog', () => {
+  const data = initialSnapshot();
+  const before = data.products.map((p) => p.id);
+  const list = selectProducts(data.products, {
+    marketId: 'bom-preco',
+    availableOnly: true,
+    sort: 'priceAsc',
+  });
+  assert.ok(list.every((p) => p.stock > 0 && p.marketId === 'bom-preco'));
+  assert.ok(list.every((p, i) => i === 0 || p.price >= list[i - 1]!.price));
+  assert.deepEqual(
+    data.products.map((p) => p.id),
+    before,
+  );
+  assert.deepEqual(
+    selectProducts(data.products, {
+      marketId: 'bom-preco',
+      favoritesOnly: true,
+      favoriteIds: ['sabor-terra-7'],
+    }),
+    [],
+  );
+  assert.equal(
+    selectProducts(data.products, {
+      marketId: 'bom-preco',
+      query: 'JOAO',
+      favoritesOnly: true,
+      favoriteIds: ['bom-preco-7'],
+    })[0]!.id,
+    'bom-preco-7',
+  );
 });

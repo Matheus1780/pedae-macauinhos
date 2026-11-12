@@ -7,7 +7,7 @@ Recomendação inicial: **PostgreSQL gerenciado (por exemplo, Supabase)** atrás
 ## Quando for conectar
 
 1. Escolher provedor, região, ambiente e regras de autenticação. Criar um ambiente de desenvolvimento separado da produção.
-2. Aplicar `001_initial.sql` com uma credencial de migração no servidor. A migração é de instalação inicial, não deve ser reaplicada sobre tabelas existentes.
+2. Aplicar, nesta ordem, `001_initial.sql`, `002_assembly_bonus.sql` e `003_favorites.sql` com uma credencial de migração no servidor. A migração é de instalação inicial, não deve ser reaplicada sobre tabelas existentes.
 3. Implementar os endpoints de `docs/API.md` com o papel correto para cliente, mercado e entregador. Não usar o usuário proprietário do banco no aplicativo móvel.
 4. Configurar `DATABASE_URL`, credenciais do provedor de pagamento e segredos de autenticação **somente no backend**.
 5. Implementar reservas de estoque, transações, idempotência, webhooks assinados, estornos e autorização por proprietário. O banco já tem os campos e índices para esses fluxos.

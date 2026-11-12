@@ -22,6 +22,7 @@ function ItemRow({ item, p, onRemove }: { item: CartItem; p: Product; onRemove: 
   const a = useApp();
   const x = useRef(new Animated.Value(0)).current;
   const [note, setNote] = useState(item.note);
+  const [editingNote, setEditingNote] = useState(false);
   const onRemoveRef = useRef(onRemove);
   onRemoveRef.current = onRemove;
   const pan = useRef(
@@ -71,18 +72,33 @@ function ItemRow({ item, p, onRemove }: { item: CartItem; p: Product; onRemove: 
               }
             />
           </View>
-          <Field
-            label={`Observação: ${p.name}`}
-            value={note}
-            onChangeText={setNote}
-            maxLength={240}
-            placeholder="Preferência de escolha (opcional)"
-            onBlur={() =>
-              void a
-                .send({ type: 'note', productId: p.id, note })
-                .catch((e) => a.notify(e.message, true))
-            }
-          />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ expanded: editingNote }}
+            accessibilityLabel={`Observação de ${p.name}`}
+            onPress={() => setEditingNote(!editingNote)}
+            style={[s.row, { minHeight: 44 }]}
+          >
+            <Icon name="create-outline" size={18} />
+            <Text style={[s.small, s.flex]} numberOfLines={2}>
+              {note || 'Adicionar observação'}
+            </Text>
+            <Icon name={editingNote ? 'chevron-up' : 'chevron-down'} size={16} />
+          </Pressable>
+          {editingNote && (
+            <Field
+              label={`Observação: ${p.name}`}
+              value={note}
+              onChangeText={setNote}
+              maxLength={240}
+              placeholder="Preferência de escolha (opcional)"
+              onBlur={() =>
+                void a
+                  .send({ type: 'note', productId: p.id, note })
+                  .catch((e) => a.notify(e.message, true))
+              }
+            />
+          )}
         </Card>
       </Animated.View>
     </View>

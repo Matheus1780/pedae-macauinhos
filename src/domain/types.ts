@@ -157,6 +157,7 @@ export interface Snapshot {
   messages: ChatMessage[];
   substitutions: Substitution[];
   recentSearches: string[];
+  favoriteProductIds: string[];
 }
 export type Command =
   | { type: 'onboard'; city: string }
@@ -175,6 +176,7 @@ export type Command =
   | { type: 'profile'; name: string; email: string }
   | { type: 'search'; query: string }
   | { type: 'clearSearches' }
+  | { type: 'setFavorite'; productId: string; value: boolean }
   | { type: 'saveDemoCard'; brand: string; last4: string }
   | { type: 'removeCard'; id: string }
   | { type: 'repeat'; orderId: string; replace: boolean }

@@ -59,3 +59,13 @@ Em timeout do checkout, manter a chave de idempotência e consultar/repetir a me
 O checkout revalida a política de montagem além de endereço, produtos, disponibilidade e revisão da feira. O backend publica eventos de reatribuição antes da coleta sem duplicar o bônus e sem aumentar o total. Substituições recalculam a base; cancelamento expira o bônus. A confirmação de entrega e o livro de repasses exigem autorização de servidor, idempotência e conciliação financeira. A UI de cliente não escolhe nem liquida o recebedor.
 
 `demoConfigureAssembly` e `demoDelegateAssembly` são bloqueados pelo ApiRepository. A implementação real de decisão do mercado é uma operação administrativa/operacional separada, autenticada e auditada. `Product.image` aceita URL HTTPS de uma foto oficial; os identificadores `atlas:*` são exclusivos das fixtures locais. `Product.priceReference` distingue retailer, normalized e estimated no protótipo.
+
+## Favoritos (v1.3)
+
+`Snapshot.favoriteProductIds: string[]` contém somente os favoritos da sessão atual.
+`POST /commands` aceita `{type:"setFavorite", productId, value:boolean}`. Operação idempotente:
+`value=true` faz upsert; `false` remove; validar existência do produto. A migração
+`database/003_favorites.sql` prepara armazenamento no futuro servidor, sem acesso direto do app.
+Na API, autenticar o cliente ou usar uma sessão anônima verificada e migrar seus favoritos no login;
+nunca receber `customer_id` do aplicativo. O demo permite uso sem login, persiste localmente,
+preserva favoritos durante login e os apaga ao sair/excluir a conta. Não há sincronização entre dispositivos.

@@ -206,6 +206,13 @@ export class DemoRepository implements Repository {
               ...s.recentSearches.filter((x) => normalize(x) !== normalize(c.query)),
             ].slice(0, 8);
           break;
+        case 'setFavorite': {
+          if (!s.products.some((p) => p.id === c.productId))
+            throw new DomainError('PRODUCT', 'Produto não encontrado.');
+          s.favoriteProductIds = s.favoriteProductIds.filter((id) => id !== c.productId);
+          if (c.value) s.favoriteProductIds.push(c.productId);
+          break;
+        }
         case 'clearSearches':
           s.recentSearches = [];
           break;

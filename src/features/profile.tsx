@@ -18,6 +18,12 @@ export function Profile() {
     route: string;
   }[] = [
     {
+      title: 'Meus favoritos',
+      subtitle: 'Produtos salvos para comprar depois',
+      icon: 'heart-outline',
+      route: '/favorites',
+    },
+    {
       title: 'Meus dados',
       subtitle: 'Nome e informações de contato',
       icon: 'person-outline',
@@ -109,7 +115,7 @@ export function Profile() {
       </Card>
       {profile && <Button label="Sair da conta" secondary onPress={() => setLogout(true)} />}
       <Text style={[s.small, { textAlign: 'center', padding: 16 }]}>
-        PedeAê · Cliente v1.2.0{a.demo ? '\nAmbiente de demonstração' : ''}
+        PedeAê · Cliente v1.3.0{a.demo ? '\nAmbiente de demonstração' : ''}
       </Text>
       <Confirm
         visible={logout}

@@ -18,6 +18,8 @@ import { useTheme } from '../state/ThemeProvider';
 import { feedback } from '../ui/feedback';
 import { categories } from '../data/fixtures';
 import type { Market, Product } from '../domain/types';
+import { FavoriteButton, BasketSummary, CatalogTools } from '../ui/ShoppingTools';
+import { selectProducts, type ProductSort } from '../domain/catalog';
 import { normalize, money } from '../domain/rules';
 import {
   Screen,
@@ -119,7 +121,7 @@ export function ProductCard({
   }
   return (
     <View style={{ width: cardWidth }} testID={`product-card-${product.id}`}>
-      <Card style={{ padding: 12, gap: 8, height: showMarket ? 326 : 304 }}>
+      <Card style={{ padding: 12, gap: 8, minHeight: showMarket ? 326 : 304, borderWidth: 0 }}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={`Ver ${product.name}`}
@@ -153,6 +155,9 @@ export function ProductCard({
             </Text>
           )}
         </Pressable>
+        <View style={{ position: 'absolute', top: 6, right: 6 }}>
+          <FavoriteButton product={product} />
+        </View>
         <Text style={[s.label, { fontSize: 18, fontWeight: '700' }]}>{money(product.price)}</Text>
         <View
           style={[
@@ -294,6 +299,26 @@ export function Home() {
         </>
       }
     >
+      <View style={[s.row, { gap: 8 }]}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Favoritos"
+          onPress={() => router.push('/favorites')}
+          style={[s.row, { flex: 1, padding: 14, borderRadius: 12, backgroundColor: c.surface }]}
+        >
+          <Icon name="heart-outline" size={20} />
+          <Text style={s.label}>Favoritos</Text>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Comprar de novo"
+          onPress={() => router.push('/(tabs)/orders')}
+          style={[s.row, { flex: 1, padding: 14, borderRadius: 12, backgroundColor: c.surface }]}
+        >
+          <Icon name="time-outline" size={20} />
+          <Text style={[s.label, s.flex]}>Comprar de novo</Text>
+        </Pressable>
+      </View>
       <Card style={{ backgroundColor: c.soft, borderWidth: 0, padding: 20 }}>
         <View style={[s.row, { gap: 12 }]}>
           <View style={[s.flex, { gap: 8 }]}>
@@ -571,7 +596,10 @@ export function Catalog() {
     [query, setQuery] = useState('');
   const [limit, setLimit] = useState(24);
   const [assemblyDemo, setAssemblyDemo] = useState(false);
-  useEffect(() => setLimit(24), [id, category, query]);
+  const [sort, setSort] = useState<ProductSort>('selection');
+  const [availableOnly, setAvailableOnly] = useState(false);
+  const [favoritesOnly, setFavoritesOnly] = useState(false);
+  useEffect(() => setLimit(24), [id, category, query, sort, availableOnly, favoritesOnly]);
   const market = a.data!.markets.find((m) => m.id === id);
   if (!market)
     return (
@@ -582,37 +610,61 @@ export function Catalog() {
         />
       </Screen>
     );
-  const list = a.data!.products.filter(
-    (p) =>
-      p.marketId === id &&
-      (category === 'Todos' || p.category === category) &&
-      normalize(p.name).includes(normalize(query)),
-  );
+  const list = selectProducts(a.data!.products, {
+    marketId: id,
+    category,
+    query,
+    sort,
+    availableOnly,
+    favoritesOnly,
+    favoriteIds: a.data!.favoriteProductIds,
+  });
   return (
     <Screen
       title={market.name}
       subtitle={`${market.eta} · ★ ${market.rating} · ${market.distanceKm} km`}
       refresh
-      footer={
-        a.data!.cart.items.length ? (
-          <Button
-            label="Ver Minha feira"
-            icon="basket-outline"
-            onPress={() => router.push('/(tabs)/feira')}
+      footer={a.data!.cart.items.length ? <BasketSummary /> : undefined}
+      fixedTop={
+        <View style={{ gap: 8 }}>
+          <Field
+            label="Buscar neste mercado"
+            placeholder="Qual produto você procura?"
+            value={query}
+            onChangeText={setQuery}
           />
-        ) : undefined
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ gap: 8 }}
+          >
+            {['Todos', ...categories.map((x) => x.name)].map((cat) => (
+              <Pressable
+                key={cat}
+                accessibilityRole="button"
+                accessibilityState={{ selected: cat === category }}
+                onPress={() => setCategory(cat)}
+                style={{
+                  padding: 12,
+                  borderRadius: 24,
+                  backgroundColor: cat === category ? c.primary : c.soft,
+                }}
+              >
+                <Text
+                  style={{
+                    fontWeight: '600',
+                    color: cat === category ? c.onPrimary : c.primary,
+                  }}
+                >
+                  {cat}
+                </Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+        </View>
       }
     >
-      <Image
-        source={{ uri: market.image }}
-        style={{
-          width: '100%',
-          height: 150,
-          borderRadius: 20,
-          backgroundColor: c.soft,
-        }}
-      />
-      <View style={s.row}>
+      <View style={[s.row, { justifyContent: 'space-between', flexWrap: 'wrap' }]}>
         <Badge
           text={market.open ? 'Aberto agora' : 'Fechado'}
           tone={market.open ? 'green' : 'gray'}
@@ -622,38 +674,14 @@ export function Catalog() {
       {!market.open && (
         <Banner text="Você pode consultar os produtos. Novos pedidos ficam disponíveis quando o mercado abrir." />
       )}
-      <Field
-        label="Buscar neste mercado"
-        placeholder="Qual produto você procura?"
-        value={query}
-        onChangeText={setQuery}
+      <CatalogTools
+        sort={sort}
+        onSort={setSort}
+        availableOnly={availableOnly}
+        onAvailable={setAvailableOnly}
+        favoritesOnly={favoritesOnly}
+        onFavorites={setFavoritesOnly}
       />
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ gap: 8 }}
-      >
-        {['Todos', ...categories.map((x) => x.name)].map((cat) => (
-          <Pressable
-            key={cat}
-            onPress={() => setCategory(cat)}
-            style={{
-              padding: 12,
-              borderRadius: 24,
-              backgroundColor: cat === category ? c.primary : c.soft,
-            }}
-          >
-            <Text
-              style={{
-                fontWeight: '600',
-                color: cat === category ? c.onPrimary : c.primary,
-              }}
-            >
-              {cat}
-            </Text>
-          </Pressable>
-        ))}
-      </ScrollView>
       <View style={[s.row, { justifyContent: 'space-between' }]}>
         <Text style={s.small}>{list.length} produtos</Text>
         <Text style={s.small}>
@@ -669,7 +697,14 @@ export function Catalog() {
       ) : (
         <Empty
           title="Nenhum produto encontrado"
-          description="Experimente outra categoria ou busca."
+          description="Experimente outra categoria ou remova os filtros."
+          action="Limpar filtros"
+          onAction={() => {
+            setCategory('Todos');
+            setQuery('');
+            setAvailableOnly(false);
+            setFavoritesOnly(false);
+          }}
         />
       )}
       {list.length > limit && (
@@ -756,13 +791,16 @@ export function ProductDetail() {
     <Screen
       title="Detalhes do produto"
       footer={
-        <Button
-          label={`Adicionar à Minha Feira · ${money(p.price * quantity)}`}
-          icon="basket-outline"
-          onPress={() => void add()}
-          loading={a.busy}
-          disabled={!remaining || !market.open}
-        />
+        <>
+          <BasketSummary compact />
+          <Button
+            label={`Adicionar à Minha Feira · ${money(p.price * quantity)}`}
+            icon="basket-outline"
+            onPress={() => void add()}
+            loading={a.busy}
+            disabled={!remaining || !market.open}
+          />
+        </>
       }
     >
       <Pressable
@@ -783,7 +821,10 @@ export function ProductDetail() {
         <Badge text={p.stock ? 'Disponível' : 'Esgotado'} tone={p.stock ? 'green' : 'gray'} />
         <Text style={s.small}>{market.name}</Text>
       </View>
-      <Text style={s.heroTitle}>{p.name}</Text>
+      <View style={s.row}>
+        <Text style={[s.heroTitle, s.flex]}>{p.name}</Text>
+        <FavoriteButton product={p} />
+      </View>
       <Text style={{ fontSize: 28, fontWeight: '800', color: c.primary }}>{money(p.price)}</Text>
       <Text style={s.small}>{p.unit}</Text>
       <Text style={s.body}>{p.description}</Text>
@@ -864,6 +905,41 @@ export function ProductDetail() {
           </Text>
         </View>
       </Modal>
+    </Screen>
+  );
+}
+
+export function Favorites() {
+  const a = useApp();
+  const { s } = useUI();
+  const list = selectProducts(a.data!.products, {
+    favoritesOnly: true,
+    favoriteIds: a.data!.favoriteProductIds,
+  });
+  return (
+    <Screen
+      title="Meus favoritos"
+      subtitle="Sua seleção para as próximas feiras"
+      footer={a.data!.cart.items.length ? <BasketSummary /> : undefined}
+    >
+      <Text style={s.small}>
+        Salvos neste dispositivo na demonstração. Cada produto pertence ao mercado indicado.
+      </Text>
+      {list.length ? (
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
+          {list.map((p) => (
+            <ProductCard key={p.id} product={p} showMarket />
+          ))}
+        </View>
+      ) : (
+        <Empty
+          icon="heart-outline"
+          title="Guarde os seus preferidos"
+          description="Toque no coração de um produto para encontrá-lo aqui na próxima compra."
+          action="Explorar mercados"
+          onAction={() => router.push('/markets')}
+        />
+      )}
     </Screen>
   );
 }
